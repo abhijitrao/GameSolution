@@ -4,93 +4,181 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_NOTIFICATIONS = 100;
+    private LinearLayout root;
+
+    private final int bg = Color.rgb(11, 15, 24);
+    private final int card = Color.rgb(22, 28, 40);
+    private final int card2 = Color.rgb(29, 36, 51);
+    private final int primary = Color.rgb(105, 145, 255);
+    private final int text = Color.rgb(245, 247, 252);
+    private final int secondary = Color.rgb(165, 174, 194);
+    private final int success = Color.rgb(76, 205, 145);
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setStatusBarColor(bg);
+        getWindow().setNavigationBarColor(bg);
         showUi();
     }
 
     @Override protected void onResume() {
         super.onResume();
-        if (getWindow().getDecorView() != null) showUi();
+        if (root != null) showUi();
     }
 
     private void showUi() {
-        LinearLayout root = new LinearLayout(this);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(bg);
+        root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(40, 40, 40, 40);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(20), dp(18), dp(20), dp(28));
+        scroll.addView(root);
 
-        TextView title = new TextView(this);
-        title.setText("GameSolution\nFloating App Restart Utility");
-        title.setTextSize(24);
-        title.setGravity(Gravity.CENTER);
-        root.addView(title, new LinearLayout.LayoutParams(-1, -2));
+        TextView brand = text("GAME SOLUTION", 12, secondary, Typeface.BOLD);
+        brand.setLetterSpacing(.16f);
+        root.addView(brand);
 
-        TextView status = new TextView(this);
-        status.setPadding(0, 25, 0, 25);
-        status.setText(buildStatus());
-        root.addView(status);
+        TextView title = text("Restart apps\nwithout the hassle.", 30, text, Typeface.BOLD);
+        title.setPadding(0, dp(8), 0, dp(8));
+        root.addView(title);
 
-        // Android 13+ can block sensitive Settings access for sideloaded apps.
-        Button restricted = new Button(this);
-        restricted.setText("1. Allow Restricted Settings");
-        restricted.setOnClickListener(v -> openRestrictedSettingsHelp());
-        root.addView(restricted);
+        TextView subtitle = text("A lightweight floating utility for quickly relaunching the app currently in use.", 15, secondary, Typeface.NORMAL);
+        subtitle.setLineSpacing(0, 1.12f);
+        root.addView(subtitle, lp(-1, -2, 0, 0, 0, 18));
 
-        Button overlay = new Button(this);
-        overlay.setText(Settings.canDrawOverlays(this) ? "✓ Overlay permission granted" : "2. Allow display over other apps");
-        overlay.setOnClickListener(v -> openOverlaySettings());
-        root.addView(overlay);
+        LinearLayout statusCard = card();
+        statusCard.addView(text("SYSTEM STATUS", 11, secondary, Typeface.BOLD));
+        statusCard.addView(statusRow("Overlay permission", Settings.canDrawOverlays(this)));
+        statusCard.addView(statusRow("Usage access", hasUsageAccess()));
+        statusCard.addView(statusRow("Battery optimization", isIgnoringBatteryOptimizations()));
+        statusCard.addView(statusRow("Notifications", hasNotificationPermission()));
+        root.addView(statusCard, lp(-1, -2, 0, 0, 0, 18));
 
-        Button usage = new Button(this);
-        usage.setText(hasUsageAccess() ? "✓ Usage access granted" : "3. Allow usage access");
-        usage.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
-        root.addView(usage);
+        TextView setup = text("SETUP", 11, secondary, Typeface.BOLD);
+        setup.setLetterSpacing(.12f);
+        root.addView(setup, lp(-1, -2, 0, 0, 0, 8));
 
-        Button battery = new Button(this);
-        battery.setText(isIgnoringBatteryOptimizations() ? "✓ Battery optimization ignored" : "4. Allow background operation");
-        battery.setOnClickListener(v -> requestBatteryOptimizationExemption());
-        root.addView(battery);
+        addAction("Allow Restricted Settings", "Required for sideloaded apps on Android 13+", !isRestrictedSettingReady(), v -> openRestrictedSettingsHelp());
+        addAction("Display over other apps", "Required for the floating bubble", Settings.canDrawOverlays(this), v -> openOverlaySettings());
+        addAction("Usage access", "Used only to identify the current app", hasUsageAccess(), v -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
+        addAction("Background operation", "Helps keep the floating utility alive", isIgnoringBatteryOptimizations(), v -> requestBatteryOptimizationExemption());
+        addAction("Notifications", "Required for foreground-service status", hasNotificationPermission(), v -> requestNotificationPermission());
 
-        Button notification = new Button(this);
-        notification.setText(hasNotificationPermission() ? "✓ Notifications allowed" : "5. Allow notifications");
-        notification.setOnClickListener(v -> requestNotificationPermission());
-        root.addView(notification);
+        TextView actions = text("QUICK ACTION", 11, secondary, Typeface.BOLD);
+        actions.setLetterSpacing(.12f);
+        root.addView(actions, lp(-1, -2, 0, dp(10), 0, 8));
 
-        Button start = new Button(this);
-        start.setText("Start Floating Bubble");
+        Button start = button("START FLOATING BUBBLE", primary);
         start.setEnabled(Settings.canDrawOverlays(this) && hasUsageAccess());
         start.setOnClickListener(v -> startFloatingService());
-        root.addView(start);
+        root.addView(start, lp(-1, dp(54), 0, 0, 0, 10));
 
-        TextView note = new TextView(this);
-        note.setText("The bubble stays above other apps. Tap it to show Restart App.\n\nFor Android 13+ sideloaded APKs, first open App Info → ⋮ → Allow restricted settings. Then grant Overlay and Usage Access.\n\nAndroid does not grant ordinary apps a permission to force-stop arbitrary apps. GameSolution therefore uses standard launcher relaunch APIs without root.");
-        note.setPadding(0, 25, 0, 0);
-        root.addView(note);
-        setContentView(root);
+        TextView hint = text("Once started, the bubble stays above other apps. Tap it to open Restart App and Force Stop options.", 13, secondary, Typeface.NORMAL);
+        hint.setGravity(Gravity.CENTER);
+        root.addView(hint, lp(-1, -2, 0, 4, 0, 0));
+
+        TextView version = text("GameSolution 1.1", 12, Color.rgb(105, 115, 135), Typeface.NORMAL);
+        version.setGravity(Gravity.CENTER);
+        root.addView(version, lp(-1, -2, 0, 22, 0, 0));
+
+        setContentView(scroll);
     }
 
-    private String buildStatus() {
-        return "Setup status:\n" +
-                "Overlay: " + (Settings.canDrawOverlays(this) ? "READY" : "REQUIRED") + "\n" +
-                "Usage Access: " + (hasUsageAccess() ? "READY" : "REQUIRED") + "\n" +
-                "Battery: " + (isIgnoringBatteryOptimizations() ? "OPTIMIZED" : "RESTRICTED") + "\n" +
-                "Notifications: " + (hasNotificationPermission() ? "READY" : "OPTIONAL");
+    private void addAction(String title, String desc, boolean ready, View.OnClickListener listener) {
+        LinearLayout item = new LinearLayout(this);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(dp(16), dp(12), dp(12), dp(12));
+        item.setBackground(round(card, 16));
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        TextView t = text(title, 15, text, Typeface.BOLD);
+        TextView d = text(desc, 12, secondary, Typeface.NORMAL);
+        d.setPadding(0, dp(3), 0, 0);
+        copy.addView(t);
+        copy.addView(d);
+        item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView state = text(ready ? "READY" : "OPEN", 11, ready ? success : primary, Typeface.BOLD);
+        state.setGravity(Gravity.CENTER);
+        state.setPadding(dp(10), 0, dp(4), 0);
+        item.addView(state, new LinearLayout.LayoutParams(dp(62), -1));
+        item.setOnClickListener(listener);
+        root.addView(item, lp(-1, -2, 0, 0, 0, 8));
     }
+
+    private LinearLayout statusRow(String name, boolean ready) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(10), 0, 0);
+        TextView n = text(name, 14, text, Typeface.NORMAL);
+        row.addView(n, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView s = text(ready ? "● READY" : "● REQUIRED", 12, ready ? success : Color.rgb(255, 184, 92), Typeface.BOLD);
+        row.addView(s);
+        return row;
+    }
+
+    private LinearLayout card() {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setPadding(dp(16), dp(16), dp(16), dp(16));
+        c.setBackground(round(card2, 18));
+        return c;
+    }
+
+    private Button button(String label, int color) {
+        Button b = new Button(this);
+        b.setText(label);
+        b.setTextColor(Color.WHITE);
+        b.setTextSize(13);
+        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        b.setAllCaps(false);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(round(color, 16));
+        return b;
+    }
+
+    private TextView text(String value, float size, int color, int style) {
+        TextView v = new TextView(this);
+        v.setText(value);
+        v.setTextSize(size);
+        v.setTextColor(color);
+        v.setTypeface(Typeface.DEFAULT, style);
+        return v;
+    }
+
+    private LinearLayout.LayoutParams lp(int w, int h, int l, int t, int r, int b) {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w, h);
+        p.setMargins(dp(l), dp(t), dp(r), dp(b));
+        return p;
+    }
+
+    private GradientDrawable round(int color, int radius) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(color);
+        d.setCornerRadius(dp(radius));
+        return d;
+    }
+
+    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 
     private boolean hasUsageAccess() {
         android.app.AppOpsManager appOps = (android.app.AppOpsManager) getSystemService(APP_OPS_SERVICE);
@@ -109,51 +197,31 @@ public class MainActivity extends Activity {
         return pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
     }
 
+    private boolean isRestrictedSettingReady() { return true; }
+
     private void openRestrictedSettingsHelp() {
-        Toast.makeText(this,
-                "App Info खोलकर ⋮ → Allow restricted settings चुनें",
-                Toast.LENGTH_LONG).show();
-        try {
-            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
-        } catch (Exception ignored) {
-        }
+        Toast.makeText(this, "App Info खोलकर ⋮ → Allow restricted settings चुनें", Toast.LENGTH_LONG).show();
+        try { startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) { }
     }
 
     private void requestBatteryOptimizationExemption() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                        Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
-            } catch (Exception e) {
-                startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
-            }
+            try { startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName()))); }
+            catch (Exception e) { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); }
         }
     }
 
     private void requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= 33 && !hasNotificationPermission()) {
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
-        }
+        if (Build.VERSION.SDK_INT >= 33 && !hasNotificationPermission()) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
     }
 
     private void openOverlaySettings() {
-        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:" + getPackageName()));
-        startActivity(intent);
+        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
     }
 
     private void startFloatingService() {
-        if (!Settings.canDrawOverlays(this)) {
-            openOverlaySettings();
-            return;
-        }
-        if (!hasUsageAccess()) {
-            startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
-            return;
-        }
+        if (!Settings.canDrawOverlays(this)) { openOverlaySettings(); return; }
+        if (!hasUsageAccess()) { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; }
         requestNotificationPermission();
         Intent intent = new Intent(this, FloatingService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent);
