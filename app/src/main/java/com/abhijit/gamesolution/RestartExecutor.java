@@ -28,7 +28,7 @@ public final class RestartExecutor {
             context.startActivity(home);
 
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                    | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
 
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {
