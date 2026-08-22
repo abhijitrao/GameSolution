@@ -1,29 +1,41 @@
 package com.abhijit.gamesolution;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import java.util.List;
 
-/** Best-effort activity/task restart for ordinary, non-root Android devices. */
+/** Best-effort app restart for ordinary, non-root Android devices. */
 public final class RestartExecutor {
     private RestartExecutor() {}
 
     public static boolean restart(Context context, String packageName) {
         if (packageName == null || packageName.equals(context.getPackageName())) return false;
         try {
-            PackageManager pm = context.getPackageManager();
-            Intent launch = findLaunchIntent(pm, packageName);
+            final PackageManager pm = context.getPackageManager();
+            final Intent launch = findLaunchIntent(pm, packageName);
             if (launch == null) return false;
 
-            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                    | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+            // Keep the previously working HOME transition, but do not kill the target process.
+            Intent home = new Intent(Intent.ACTION_MAIN);
+            home.addCategory(Intent.CATEGORY_HOME);
+            home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(home);
 
-            context.startActivity(launch);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                            | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    context.startActivity(launch);
+                } catch (Exception ignored) { }
+            }, 500L);
             return true;
         } catch (Exception ignored) {
             return false;
