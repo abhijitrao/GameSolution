@@ -23,7 +23,7 @@ public final class BubbleSettings {
     public static boolean hasPosition(Context context) { return prefs(context).contains(POS_X) && prefs(context).contains(POS_Y); }
     public static float getPositionX(Context context) { return prefs(context).getFloat(POS_X, 0.9f); }
     public static float getPositionY(Context context) { return prefs(context).getFloat(POS_Y, 0.25f); }
-    public static void setPosition(Context context, float xRatio, float yRatio) { prefs(context).edit().putFloat(POS_X, Math.max(0f, Math.min(1f, xRatio))).putFloat(POS_Y, Math.max(0f, Math.min(1f, yRatio))).apply(); }
+    public static void setPosition(Context context, float xRatio, float yRatio) { prefs(context).edit().putFloat(POS_X, Math.max(-0.34f, Math.min(1f, xRatio))).putFloat(POS_Y, Math.max(0f, Math.min(1f, yRatio))).apply(); }
     public static boolean isSnapToEdge(Context context) { return prefs(context).getBoolean(SNAP, false); }
     public static void setSnapToEdge(Context context, boolean enabled) { prefs(context).edit().putBoolean(SNAP, enabled).apply(); }
     public static boolean isSemiIconVisible(Context context) { return prefs(context).getBoolean(SEMI_VISIBLE, false); }
