@@ -59,16 +59,23 @@ jobs:
           s=s.replace('d.setBounds(0,0,dp(48),dp(48));','d.setBounds(0,0,dp(54),dp(54));')
           s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=5)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));')
           s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=4)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));')
-          # Launch recent apps through the existing task when possible. NEW_TASK lets Android
-          # bring the existing task to foreground instead of creating a fresh task instance.
+          # Launch recent apps through the existing task when possible.
           s=s.replace('i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);','i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);')
+          # Semi Icon Visible: keep exactly one third of the bubble visible at either edge.
+          s=s.replace('int hidden=w/3;return Math.max(-hidden,Math.min(x,sw-w+hidden));','int hidden=(w*2)/3;return Math.max(-hidden,Math.min(x,sw-w/3));')
+          s=s.replace('target=(p.x+w/2<sw/2)?-w/3:sw-(2*w/3);','target=(p.x+w/2<sw/2)?-(2*w/3):sw-(w/3);')
+          s=s.replace('p.x=enabled?(p.x+w/2<sw/2?-w/3:sw-2*w/3):(p.x<sw/2?0:sw-w);','p.x=enabled?(p.x+w/2<sw/2?-(2*w)/3:sw-w/3):(p.x<sw/2?0:sw-w);')
+          # Keep the selected edge anchored while changing bubble size.
+          old_apply='boolean wasRight=(p.x+oldW>=getResources().getDisplayMetrics().widthPixels-dp(2));boolean wasLeft=p.x<=dp(2);float cx=p.x+oldW/2f,cy=p.y+old/2f;p.width=newW;p.height=newW;p.x=Math.max(dp(4),Math.min((int)(cx-newW/2f),getResources().getDisplayMetrics().widthPixels-dp(size+4)));'
+          new_apply='boolean wasRight=(p.x+oldW>=getResources().getDisplayMetrics().widthPixels-dp(2));boolean wasLeft=p.x<=dp(2);float cx=p.x+oldW/2f,cy=p.y+old/2f;p.width=newW;p.height=newW;int sw2=getResources().getDisplayMetrics().widthPixels;int newX;if(BubbleSettings.isSemiIconVisible(this)){newX=wasLeft?-(2*newW)/3:(wasRight?sw2-newW/3:(int)(cx-newW/2f));}else{newX=wasLeft?0:(wasRight?sw2-newW:(int)(cx-newW/2f));}p.x=clampBubbleX(newX,size,sw2);'
+          s=s.replace(old_apply,new_apply)
           f.write_text(s,encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java
           if ! git diff --cached --quiet; then
-            git commit -m "Preserve recent app task state"
+            git commit -m "Fix semi icon edge positioning"
             git push
           fi
       - name: Run unit tests
