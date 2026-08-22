@@ -51,30 +51,30 @@ jobs:
           echo "GAME_KEYSTORE_FILE=$RUNNER_TEMP/gamesolution-release.jks" >> "$GITHUB_ENV"
 
       - name: Fix Live Monitor source
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           path = Path('app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java')
           text = path.read_text(encoding='utf-8')
           marker = '    private static int readCpuPercent(int pid) {'
-          method = '''    private static int findPid(ActivityManager am, String packageName) {
-              if (am == null || packageName == null) return -1;
-              try {
-                  java.util.List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
-                  if (processes == null) return -1;
-                  for (ActivityManager.RunningAppProcessInfo process : processes) {
-                      if (process != null && packageName.equals(process.processName)) {
-                          return process.pid;
-                      }
-                  }
-              } catch (Exception ignored) {}
-              return -1;
-          }
+          method = '\n'.join([
+              '    private static int findPid(ActivityManager am, String packageName) {',
+              '        if (am == null || packageName == null) return -1;',
+              '        try {',
+              '            java.util.List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();',
+              '            if (processes == null) return -1;',
+              '            for (ActivityManager.RunningAppProcessInfo process : processes) {',
+              '                if (process != null && packageName.equals(process.processName)) {',
+              '                    return process.pid;',
+              '                }',
+              '            }',
+              '        } catch (Exception ignored) {}',
+              '        return -1;',
+              '    }',
+              '',
+          ])
 
-'''
           if 'private static int findPid(ActivityManager am, String packageName)' not in text:
               if marker not in text:
                   raise SystemExit('LiveMonitorDialog marker not found')
@@ -83,15 +83,6 @@ jobs:
           else:
               print('findPid already present')
           PY
-          if git diff --quiet -- app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java; then
-            echo "No source change required"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java
-            git commit -m "Add Live Monitor findPid helper"
-            git push
-          fi
 
       - name: Run unit tests
         run: gradle testDebugUnitTest --stacktrace
@@ -133,5 +124,3 @@ jobs:
         with:
           generate_release_notes: true
           files: app/build/outputs/apk/release/app-release.apk
-
-# Trigger CI after fixing Live Monitor source
