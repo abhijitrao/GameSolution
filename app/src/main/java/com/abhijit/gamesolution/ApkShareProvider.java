@@ -27,16 +27,20 @@ public final class ApkShareProvider extends ContentProvider {
     }
 
     @Override public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-        File file = resolve(uri);
-        String[] cols = projection == null ? new String[]{"_display_name", "_size"} : projection;
-        MatrixCursor cursor = new MatrixCursor(cols, 1);
-        Object[] row = new Object[cols.length];
-        for (int i = 0; i < cols.length; i++) {
-            if ("_display_name".equals(cols[i])) row[i] = file.getName();
-            else if ("_size".equals(cols[i])) row[i] = file.length();
+        try {
+            File file = resolve(uri);
+            String[] cols = projection == null ? new String[]{"_display_name", "_size"} : projection;
+            MatrixCursor cursor = new MatrixCursor(cols, 1);
+            Object[] row = new Object[cols.length];
+            for (int i = 0; i < cols.length; i++) {
+                if ("_display_name".equals(cols[i])) row[i] = file.getName();
+                else if ("_size".equals(cols[i])) row[i] = file.length();
+            }
+            cursor.addRow(row);
+            return cursor;
+        } catch (FileNotFoundException e) {
+            return null;
         }
-        cursor.addRow(row);
-        return cursor;
     }
 
     @Override public int delete(Uri uri, String selection, String[] selectionArgs) { return 0; }
