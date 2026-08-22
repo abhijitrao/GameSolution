@@ -44,6 +44,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           def replace_method(source, signature, replacement):
               start = source.find(signature)
@@ -54,12 +55,10 @@ jobs:
                   raise SystemExit(f'{signature} opening brace not found')
               depth = 0
               for i in range(brace, len(source)):
-                  if source[i] == '{':
-                      depth += 1
+                  if source[i] == '{': depth += 1
                   elif source[i] == '}':
                       depth -= 1
-                      if depth == 0:
-                          return source[:start] + replacement + source[i + 1:]
+                      if depth == 0: return source[:start] + replacement + source[i + 1:]
               raise SystemExit(f'{signature} closing brace not found')
 
           p=Path('app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java')
@@ -81,11 +80,9 @@ jobs:
           s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
           s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP+8);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
 
-          new_move=''' private void moveBubbleForSemiSetting(boolean enabled){if(bubbleView==null)return;int sw=getResources().getDisplayMetrics().widthPixels;int sh=getResources().getDisplayMetrics().heightPixels;WindowManager.LayoutParams p=(WindowManager.LayoutParams)bubbleView.getLayoutParams();int w=Math.max(1,p.width);boolean right=p.x+w/2>=sw/2;if(enabled){p.x=right?sw-(2*w/3):-(w/3);}else{p.x=right?sw-w:0;}p.x=Math.max(enabled?-(w/3):0,Math.min(p.x,enabled?sw-(2*w/3):sw-w));p.y=Math.max(dp(48),Math.min(p.y,sh-w-dp(8)));windowManager.updateViewLayout(bubbleView,p);BubbleSettings.setPosition(this,p.x/(float)sw,p.y/(float)sh);}'''
-          s=replace_method(s,' private void moveBubbleForSemiSetting(boolean enabled)',new_move)
-
-          new_apply=''' private void applyBubbleSettings(){if(bubbleView==null)return;int size=BubbleSettings.getSize(this);WindowManager.LayoutParams p=(WindowManager.LayoutParams)bubbleView.getLayoutParams();int sw=getResources().getDisplayMetrics().widthPixels,sh=getResources().getDisplayMetrics().heightPixels;int oldW=Math.max(1,p.width),newW=dp(size);float centerX=p.x+oldW/2f,centerY=p.y+oldW/2f;boolean right=p.x+oldW/2>=sw/2;p.width=newW;p.height=newW;if(BubbleSettings.isSemiIconVisible(this)){p.x=right?sw-(2*newW/3):-(newW/3);}else{p.x=Math.max(0,Math.min((int)(centerX-newW/2f),sw-newW));}p.y=Math.max(dp(48),Math.min((int)(centerY-newW/2f),sh-newW-dp(8)));windowManager.updateViewLayout(bubbleView,p);bubbleView.setAlpha(BubbleSettings.getTransparency(this)/100f);BubbleSettings.setPosition(this,p.x/(float)sw,p.y/(float)sh);}'''
-          s=replace_method(s,' private void applyBubbleSettings()',new_apply)
+          # Semi icon mode is intentionally disabled for the stable bubble build.
+          s=s.replace('BubbleSettings.isSemiIconVisible(this)','false')
+          s=re.sub(r'TextView semi=label\("Semi Icon Visible: ".*?box\.addView\(semi,rowLp\(dp\(48\),dp\(16\)\)\);', '', s, count=1, flags=re.S)
 
           f.write_text(s,encoding='utf-8')
           PY
@@ -93,7 +90,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java
           if ! git diff --cached --quiet; then
-            git commit -m "Fix semi bubble position and size anchoring"
+            git commit -m "Stabilize bubble and disable semi icon mode"
             git push
           fi
       - name: Run unit tests
