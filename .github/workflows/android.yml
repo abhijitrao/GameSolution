@@ -53,16 +53,19 @@ jobs:
             p.write_text(t.replace(marker,m+marker,1),encoding='utf-8')
           f=Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java')
           s=f.read_text(encoding='utf-8')
-          # Enforce the final Recent Apps design on every CI build, including when the method already exists.
-          s=s.replace('d.setBounds(0,0,dp(32),dp(32));','d.setBounds(0,0,dp(48),dp(48));')
-          s=s.replace('if(++count>=5)break;','if(++count>=4)break;')
+          # Recent Apps: four fixed-size icons, full row height, and edge-to-edge alignment.
+          s=s.replace('row.setPadding(dp(8),0,dp(8),0);','row.setPadding(0,0,0,0);')
+          s=s.replace('d.setBounds(0,0,dp(32),dp(32));','d.setBounds(0,0,dp(54),dp(54));')
+          s=s.replace('d.setBounds(0,0,dp(48),dp(48));','d.setBounds(0,0,dp(54),dp(54));')
+          s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=5)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));')
+          s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=4)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));')
           f.write_text(s,encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java
           if ! git diff --cached --quiet; then
-            git commit -m "Limit recent apps to four icons"
+            git commit -m "Align recent app icons to row edges"
             git push
           fi
       - name: Run unit tests
