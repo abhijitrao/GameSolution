@@ -4,7 +4,6 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -56,22 +55,31 @@ public class FloatingService extends Service {
         LinearLayout cardView = new LinearLayout(this); cardView.setOrientation(LinearLayout.VERTICAL); cardView.setPadding(dp(18), dp(14), dp(18), dp(10)); cardView.setBackground(round(navy, 20)); cardView.setElevation(22f);
         TextView eyebrow = label("CURRENT APP", 11, primary, Typeface.BOLD); cardView.addView(eyebrow);
         TextView title = label(shortPackage(targetPackage), 17, text, Typeface.BOLD); title.setPadding(0, dp(3), 0, dp(12)); cardView.addView(title);
-        TextView restart = option("↻", "Restart App", "Clear task and relaunch", text); cardView.addView(restart, rowLp(dp(58)));
+
+        LinearLayout restart = option("↻", "Restart App", "Clear task and relaunch", text);
+        cardView.addView(restart, rowLp(dp(58)));
         restart.setOnClickListener(v -> { String pkg = targetPackage; removeMenu(); boolean ok = RestartExecutor.restart(this, pkg); if (!ok) Toast.makeText(this, "Unable to relaunch " + pkg, Toast.LENGTH_SHORT).show(); });
-        TextView forceStop = option("■", "Force Stop & Restart", "Open Android App Info", danger); cardView.addView(forceStop, rowLp(dp(58)));
+
+        LinearLayout forceStop = option("■", "Force Stop & Restart", "Open Android App Info", danger);
+        cardView.addView(forceStop, rowLp(dp(58)));
         forceStop.setOnClickListener(v -> { String pkg = targetPackage; removeMenu(); boolean ok = RestartExecutor.openForceStopPage(this, pkg); if (ok) Toast.makeText(this, "Tap Force stop, then launch the game again.", Toast.LENGTH_LONG).show(); else Toast.makeText(this, "Unable to open App Info for " + pkg, Toast.LENGTH_SHORT).show(); });
-        TextView close = option("×", "Close", "Dismiss this menu", secondary); cardView.addView(close, rowLp(dp(48))); close.setOnClickListener(v -> removeMenu());
+
+        LinearLayout close = option("×", "Close", "Dismiss this menu", secondary);
+        cardView.addView(close, rowLp(dp(48)));
+        close.setOnClickListener(v -> removeMenu());
+
         WindowManager.LayoutParams menuParams = new WindowManager.LayoutParams(dp(292), dp(250), overlayType(), WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
         menuParams.gravity = Gravity.TOP | Gravity.END; menuParams.x = Math.max(dp(8), x + dp(70)); menuParams.y = Math.max(dp(72), y); menuView = cardView; windowManager.addView(menuView, menuParams);
     }
 
-    private TextView option(String icon, String title, String subtitle, int iconColor) {
-        LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(dp(10), 0, dp(8), 0); row.setBackground(round(card, 15));
+    private LinearLayout option(String icon, String title, String subtitle, int iconColor) {
+        LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(dp(10), 0, dp(8), 0); row.setBackground(round(card, 15)); row.setClickable(true);
         TextView i = label(icon, 22, iconColor, Typeface.BOLD); i.setGravity(Gravity.CENTER); row.addView(i, new LinearLayout.LayoutParams(dp(38), -1));
-        LinearLayout copy = new LinearLayout(this); copy.setOrientation(LinearLayout.VERTICAL); copy.setGravity(Gravity.CENTER_VERTICAL); TextView t = label(title, 14, text, Typeface.BOLD); TextView s = label(subtitle, 11, secondary, Typeface.NORMAL); copy.addView(t); copy.addView(s); row.addView(copy, new LinearLayout.LayoutParams(0, -1, 1));
-        row.setTag(title); TextView wrapper = new TextView(this); wrapper.setVisibility(View.GONE); wrapper.setTag(row); return rowToText(row);
+        LinearLayout copy = new LinearLayout(this); copy.setOrientation(LinearLayout.VERTICAL); copy.setGravity(Gravity.CENTER_VERTICAL);
+        copy.addView(label(title, 14, text, Typeface.BOLD)); copy.addView(label(subtitle, 11, secondary, Typeface.NORMAL));
+        row.addView(copy, new LinearLayout.LayoutParams(0, -1, 1));
+        return row;
     }
-    private TextView rowToText(LinearLayout row) { TextView v = new TextView(this); v.setTag(row); v.setOnClickListener(view -> ((View) view.getTag()).performClick()); v.setVisibility(View.VISIBLE); v.setBackground(row.getBackground()); v.setPadding(0,0,0,0); v.setText(""); return v; }
     private LinearLayout.LayoutParams rowLp(int height) { return new LinearLayout.LayoutParams(-1, height); }
     private TextView label(String value, float size, int color, int style) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color); v.setTypeface(Typeface.DEFAULT, style); return v; }
     private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
