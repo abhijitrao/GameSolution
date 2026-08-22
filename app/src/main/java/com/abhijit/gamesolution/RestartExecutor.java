@@ -12,7 +12,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import java.util.List;
 
-/** Best-effort app task restart for ordinary, non-root Android devices. */
+/** Stable best-effort app task restart for ordinary, non-root Android devices. */
 public final class RestartExecutor {
     private static final long RELAUNCH_INTERVAL_MS = 2000L;
     private static final int MAX_RELAUNCH_ATTEMPTS = 10;
@@ -26,13 +26,11 @@ public final class RestartExecutor {
             final Intent launch = findLaunchIntent(pm, packageName);
             if (launch == null) return false;
 
-            // Keep the working HOME transition.
             Intent home = new Intent(Intent.ACTION_MAIN);
             home.addCategory(Intent.CATEGORY_HOME);
             home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(home);
 
-            // Experiment 4: explicitly clear the target task and create a fresh task.
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                     | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
@@ -41,24 +39,17 @@ public final class RestartExecutor {
             Runnable relaunchCheck = new Runnable() {
                 @Override
                 public void run() {
-                    if (isPackageForeground(context, packageName)) {
-                        return;
-                    }
-
-                    if (attempts[0]++ >= MAX_RELAUNCH_ATTEMPTS) {
-                        return;
-                    }
+                    if (isPackageForeground(context, packageName)) return;
+                    if (attempts[0]++ >= MAX_RELAUNCH_ATTEMPTS) return;
 
                     try {
                         context.startActivity(launch);
                     } catch (Exception ignored) {
                     }
-
                     handler.postDelayed(this, RELAUNCH_INTERVAL_MS);
                 }
             };
 
-            // Give Home a moment to become foreground before the first launch.
             handler.postDelayed(relaunchCheck, 1500L);
             return true;
         } catch (Exception ignored) {
@@ -78,14 +69,11 @@ public final class RestartExecutor {
         UsageEvents.Event event = new UsageEvents.Event();
         long latestTimestamp = -1L;
         String latestPackage = null;
-
         while (events.hasNextEvent()) {
             events.getNextEvent(event);
             int type = event.getEventType();
             if (type != UsageEvents.Event.ACTIVITY_RESUMED
-                    && type != UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                continue;
-            }
+                    && type != UsageEvents.Event.MOVE_TO_FOREGROUND) continue;
             if (event.getTimeStamp() > latestTimestamp) {
                 latestTimestamp = event.getTimeStamp();
                 latestPackage = event.getPackageName();
