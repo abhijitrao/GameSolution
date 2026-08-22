@@ -85,8 +85,8 @@ public class FloatingService extends Service {
                     float dx = event.getRawX() - downX;
                     float dy = event.getRawY() - downY;
                     if (Math.abs(dx) > dp(6) || Math.abs(dy) > dp(6)) dragging = true;
-                    params.x = startX - (int) dx;
-                    params.y = startY + (int) dy;
+                    params.x = clamp(startX - (int) dx, dp(4), getResources().getDisplayMetrics().widthPixels - dp(60));
+                    params.y = clamp(startY + (int) dy, dp(40), getResources().getDisplayMetrics().heightPixels - dp(70));
                     windowManager.updateViewLayout(bubble, params);
                     return true;
                 case MotionEvent.ACTION_UP:
@@ -117,7 +117,7 @@ public class FloatingService extends Service {
         card.setElevation(18f);
 
         TextView title = new TextView(this);
-        title.setText("GameSolution\n" + targetPackage);
+        title.setText("Restart\n" + targetPackage);
         title.setTextColor(Color.DKGRAY);
         title.setTextSize(14);
         card.addView(title, new LinearLayout.LayoutParams(dp(210), dp(58)));
@@ -133,7 +133,7 @@ public class FloatingService extends Service {
             String pkg = targetPackage;
             removeMenu();
             boolean ok = RestartExecutor.restart(this, pkg);
-            if (!ok) Toast.makeText(this, "Could not restart " + pkg, Toast.LENGTH_SHORT).show();
+            if (!ok) Toast.makeText(this, "Unable to relaunch " + pkg, Toast.LENGTH_SHORT).show();
         });
 
         WindowManager.LayoutParams menuParams = new WindowManager.LayoutParams(
@@ -149,9 +149,10 @@ public class FloatingService extends Service {
 
     private int overlayType() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                : WindowManager.LayoutParams.TYPE_PHONE;
+                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
     }
+
+    private int clamp(int value, int min, int max) { return Math.max(min, Math.min(value, max)); }
 
     private void removeMenu() {
         if (menuView != null && windowManager != null) {
