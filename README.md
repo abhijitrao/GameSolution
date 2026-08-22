@@ -2,6 +2,22 @@
 
 Android floating bubble utility for restarting the app currently in use.
 
+## Stable Release 3.2
+
+Release 3.2 finalizes the Recent Apps and Live Monitor improvements.
+
+### Recent Apps
+- Recent apps are shown as a single icon row at the bottom of the Bubble dialog.
+- Maximum **4 apps** are displayed.
+- Icons fill the Recent Apps row height and align to the row edges.
+- Current app and GameSolution are excluded.
+- Selecting a recent app brings its existing task to the foreground when possible, preserving its current state instead of intentionally resetting the task.
+- Foreground-app detection uses UsageEvents with a UsageStats fallback to improve reliability.
+
+### Live Monitor
+- Live process/activity monitoring with system memory, battery and temperature information where Android permits access.
+- Restricted metrics are shown as **Unavailable/Restricted** rather than exposing unreliable values.
+
 ## Features
 1. Draw over other apps permission.
 2. Floating bubble visible over other apps.
