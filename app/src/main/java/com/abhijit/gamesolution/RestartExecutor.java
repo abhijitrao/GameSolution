@@ -15,7 +15,7 @@ import java.util.List;
 /** Stable best-effort app task restart for ordinary, non-root Android devices. */
 public final class RestartExecutor {
     private static final long RELAUNCH_INTERVAL_MS = 750L;
-    private static final long FIRST_RELAUNCH_DELAY_MS = 500L;
+    private static final long FIRST_RELAUNCH_DELAY_MS = 1000L;
     private static final int MAX_RELAUNCH_ATTEMPTS = 10;
 
     private RestartExecutor() {}
