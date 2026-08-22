@@ -5,7 +5,6 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
@@ -109,7 +108,7 @@ public class FloatingService extends Service {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(10), dp(16), dp(10));
+        card.setPadding(dp(16), dp(10), dp(16), dp(8));
         GradientDrawable cardBg = new GradientDrawable();
         cardBg.setColor(Color.WHITE);
         cardBg.setCornerRadius(dp(14));
@@ -120,15 +119,10 @@ public class FloatingService extends Service {
         title.setText("Restart\n" + targetPackage);
         title.setTextColor(Color.DKGRAY);
         title.setTextSize(14);
-        card.addView(title, new LinearLayout.LayoutParams(dp(210), dp(58)));
+        card.addView(title, new LinearLayout.LayoutParams(dp(250), dp(58)));
 
-        TextView restart = new TextView(this);
-        restart.setText("Restart App");
-        restart.setTextColor(Color.rgb(35, 35, 35));
-        restart.setTextSize(17);
-        restart.setGravity(Gravity.CENTER_VERTICAL);
-        restart.setPadding(dp(8), 0, 0, 0);
-        card.addView(restart, new LinearLayout.LayoutParams(dp(210), dp(52)));
+        TextView restart = createOption("Restart App");
+        card.addView(restart, new LinearLayout.LayoutParams(dp(250), dp(48)));
         restart.setOnClickListener(v -> {
             String pkg = targetPackage;
             removeMenu();
@@ -136,8 +130,26 @@ public class FloatingService extends Service {
             if (!ok) Toast.makeText(this, "Unable to relaunch " + pkg, Toast.LENGTH_SHORT).show();
         });
 
+        TextView forceStop = createOption("Force Stop & Restart");
+        card.addView(forceStop, new LinearLayout.LayoutParams(dp(250), dp(52)));
+        forceStop.setOnClickListener(v -> {
+            String pkg = targetPackage;
+            removeMenu();
+            boolean ok = RestartExecutor.openForceStopPage(this, pkg);
+            if (ok) {
+                Toast.makeText(this, "Tap Force stop for the game, then open GameSolution again to relaunch it.", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Unable to open App Info for " + pkg, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        TextView close = createOption("Close");
+        close.setTextColor(Color.GRAY);
+        card.addView(close, new LinearLayout.LayoutParams(dp(250), dp(42)));
+        close.setOnClickListener(v -> removeMenu());
+
         WindowManager.LayoutParams menuParams = new WindowManager.LayoutParams(
-                dp(230), dp(125), overlayType(),
+                dp(270), dp(245), overlayType(),
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT);
         menuParams.gravity = Gravity.TOP | Gravity.END;
@@ -145,6 +157,17 @@ public class FloatingService extends Service {
         menuParams.y = Math.max(dp(70), y);
         menuView = card;
         windowManager.addView(menuView, menuParams);
+    }
+
+    private TextView createOption(String text) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextColor(Color.rgb(35, 35, 35));
+        view.setTextSize(16);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        view.setPadding(dp(8), 0, 0, 0);
+        view.setBackgroundColor(Color.TRANSPARENT);
+        return view;
     }
 
     private int overlayType() {
