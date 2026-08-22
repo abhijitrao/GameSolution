@@ -3,8 +3,8 @@ package com.abhijit.gamesolution;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
-import android.os.SystemClock;
 
+/** Resolves the most recently resumed package while ignoring GameSolution itself. */
 public final class ForegroundAppResolver {
     private ForegroundAppResolver() {}
 
@@ -13,23 +13,27 @@ public final class ForegroundAppResolver {
         if (manager == null) return null;
 
         long end = System.currentTimeMillis();
-        long begin = end - 60_000;
+        long begin = end - 5 * 60_000L;
         UsageEvents events = manager.queryEvents(begin, end);
+        if (events == null) return null;
+
         UsageEvents.Event event = new UsageEvents.Event();
-        String current = null;
-        long latest = 0L;
+        String latestPackage = null;
+        long latestTimestamp = -1L;
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event);
+            String pkg = event.getPackageName();
+            if (pkg == null || ownPackage.equals(pkg)) continue;
+
             int type = event.getEventType();
-            if ((type == UsageEvents.Event.ACTIVITY_RESUMED || type == UsageEvents.Event.MOVE_TO_FOREGROUND)
-                    && event.getPackageName() != null
-                    && !ownPackage.equals(event.getPackageName())
-                    && event.getTimeStamp() >= latest) {
-                latest = event.getTimeStamp();
-                current = event.getPackageName();
+            boolean foreground = type == UsageEvents.Event.ACTIVITY_RESUMED
+                    || type == UsageEvents.Event.MOVE_TO_FOREGROUND;
+            if (foreground && event.getTimeStamp() > latestTimestamp) {
+                latestTimestamp = event.getTimeStamp();
+                latestPackage = pkg;
             }
         }
-        return current;
+        return latestPackage;
     }
 }
