@@ -59,13 +59,16 @@ jobs:
           s=s.replace('d.setBounds(0,0,dp(48),dp(48));','d.setBounds(0,0,dp(54),dp(54));')
           s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=5)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));')
           s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=4)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));')
+          # Launch recent apps through the existing task when possible. NEW_TASK lets Android
+          # bring the existing task to foreground instead of creating a fresh task instance.
+          s=s.replace('i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);','i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);')
           f.write_text(s,encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java
           if ! git diff --cached --quiet; then
-            git commit -m "Align recent app icons to row edges"
+            git commit -m "Preserve recent app task state"
             git push
           fi
       - name: Run unit tests
