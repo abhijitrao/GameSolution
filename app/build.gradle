@@ -18,7 +18,7 @@ android {
                 storeFile file(System.getenv('GAME_KEYSTORE_FILE'))
                 storePassword System.getenv('GAME_KEYSTORE_PASSWORD')
                 keyAlias System.getenv('GAME_KEY_ALIAS')
-                keyPassword System.getenv('GAME_KEY_PASSWORD')
+                keyPassword System.getenv('GAME_KEY_PASSWORD') ?: System.getenv('GAME_KEYSTORE_PASSWORD')
             }
         }
     }
