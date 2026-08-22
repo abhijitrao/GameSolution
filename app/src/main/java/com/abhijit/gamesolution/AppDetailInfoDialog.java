@@ -51,7 +51,7 @@ public final class AppDetailInfoDialog {
             TextView pkg = text(context, packageName, 11, Color.rgb(165,174,194), Typeface.NORMAL);
             pkg.setSingleLine(true);
             pkg.setEllipsize(TextUtils.TruncateAt.MIDDLE);
-            root.addView(pkg, margin(context, 0, 0, 0, 14));
+            root.addView(pkg, margin(context, -1, -2, 0, 0, 14));
 
             ScrollView scroll = new ScrollView(context);
             LinearLayout info = new LinearLayout(context);
