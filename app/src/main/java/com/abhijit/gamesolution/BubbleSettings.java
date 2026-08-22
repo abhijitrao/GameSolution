@@ -6,6 +6,9 @@ import android.content.SharedPreferences;
 public final class BubbleSettings {
     private static final String PREFS = "bubble_settings";
     private static final String SIZE = "size";
+    private static final String WIDTH = "width";
+    private static final String HEIGHT = "height";
+    private static final String SHAPE = "shape";
     private static final String TRANSPARENCY = "transparency";
     private static final String POS_X = "position_x_ratio";
     private static final String POS_Y = "position_y_ratio";
@@ -15,7 +18,13 @@ public final class BubbleSettings {
 
     private static SharedPreferences prefs(Context context) { return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
     public static int getSize(Context context) { return prefs(context).getInt(SIZE, 58); }
-    public static void setSize(Context context, int size) { prefs(context).edit().putInt(SIZE, Math.max(40, Math.min(80, size))).apply(); }
+    public static void setSize(Context context, int size) { prefs(context).edit().putInt(SIZE, Math.max(5, Math.min(120, size))).apply(); }
+    public static String getShape(Context context) { return prefs(context).getString(SHAPE, "CIRCLE"); }
+    public static void setShape(Context context, String shape) { prefs(context).edit().putString(SHAPE, "OVAL".equals(shape) ? "OVAL" : "CIRCLE").apply(); }
+    public static int getWidth(Context context) { return prefs(context).getInt(WIDTH, getSize(context)); }
+    public static int getHeight(Context context) { return prefs(context).getInt(HEIGHT, getSize(context)); }
+    public static void setWidth(Context context, int width) { prefs(context).edit().putInt(WIDTH, Math.max(5, Math.min(120, width))).apply(); }
+    public static void setHeight(Context context, int height) { prefs(context).edit().putInt(HEIGHT, Math.max(5, Math.min(120, height))).apply(); }
     public static int getTransparencyPercent(Context context) { return prefs(context).getInt(TRANSPARENCY, 100); }
     public static int getTransparency(Context context) { return getTransparencyPercent(context); }
     public static void setTransparency(Context context, int percent) { prefs(context).edit().putInt(TRANSPARENCY, Math.max(20, Math.min(100, percent))).apply(); }
