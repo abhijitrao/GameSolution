@@ -17,7 +17,7 @@ public final class RestartExecutor {
             PackageManager pm = context.getPackageManager();
             Intent launch = pm.getLaunchIntentForPackage(packageName);
 
-            // Fallback for Android package-visibility/device-specific launcher behavior.
+            // Normal apps expose MAIN/LAUNCHER.
             if (launch == null) {
                 Intent query = new Intent(Intent.ACTION_MAIN);
                 query.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -27,6 +27,22 @@ public final class RestartExecutor {
                     ResolveInfo info = activities.get(0);
                     launch = new Intent(Intent.ACTION_MAIN);
                     launch.addCategory(Intent.CATEGORY_LAUNCHER);
+                    launch.setClassName(info.activityInfo.packageName, info.activityInfo.name);
+                }
+            }
+
+            // Home/launcher apps commonly expose CATEGORY_HOME instead of CATEGORY_LAUNCHER.
+            // This specifically handles launchers such as Motorola's launcher package.
+            if (launch == null) {
+                Intent homeQuery = new Intent(Intent.ACTION_MAIN);
+                homeQuery.addCategory(Intent.CATEGORY_HOME);
+                homeQuery.setPackage(packageName);
+                List<ResolveInfo> homeActivities = pm.queryIntentActivities(
+                        homeQuery, PackageManager.MATCH_DEFAULT_ONLY);
+                if (!homeActivities.isEmpty()) {
+                    ResolveInfo info = homeActivities.get(0);
+                    launch = new Intent(Intent.ACTION_MAIN);
+                    launch.addCategory(Intent.CATEGORY_HOME);
                     launch.setClassName(info.activityInfo.packageName, info.activityInfo.name);
                 }
             }
