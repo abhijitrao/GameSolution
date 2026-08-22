@@ -1,95 +1,18 @@
 package com.abhijit.gamesolution;
 
-import android.app.ActivityManager;
-import android.app.usage.UsageEvents;
-import android.app.usage.UsageStatsManager;
-import android.content.Context;
-import android.content.pm.ApplicationInfo;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.graphics.PixelFormat;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.Gravity;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.WindowManager;
-import android.graphics.drawable.GradientDrawable;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
+import android.app.ActivityManager;import android.app.usage.UsageEvents;import android.app.usage.UsageStatsManager;import android.content.Context;import android.content.pm.ApplicationInfo;import android.graphics.Color;import android.graphics.Typeface;import android.graphics.PixelFormat;import android.os.Handler;import android.os.Looper;import android.view.Gravity;import android.view.MotionEvent;import android.view.View;import android.view.WindowManager;import android.graphics.drawable.GradientDrawable;import android.widget.LinearLayout;import android.widget.ScrollView;import android.widget.TextView;
 
 public final class LiveMonitorDialog {
-    private static View view;
-    private static Handler handler;
-    private static Runnable updater;
-    private LiveMonitorDialog() {}
-
-    public static void show(Context context, WindowManager wm, String packageName, Runnable onDismiss) {
-        dismiss();
-        if (packageName == null || wm == null) return;
-        try {
-            LinearLayout root = new LinearLayout(context);
-            root.setOrientation(LinearLayout.VERTICAL);
-            root.setPadding(dp(context,18),dp(context,14),dp(context,18),dp(context,14));
-            root.setBackground(round(Color.rgb(16,21,34),22));
-            LinearLayout header = new LinearLayout(context);
-            header.setGravity(Gravity.CENTER_VERTICAL);
-            TextView title = text(context,"Live Monitor",20,Color.WHITE,Typeface.BOLD);
-            header.addView(title,new LinearLayout.LayoutParams(0,-2,1));
-            TextView close = text(context,"×",28,Color.rgb(165,174,194),Typeface.BOLD);
-            close.setGravity(Gravity.CENTER);
-            header.addView(close,new LinearLayout.LayoutParams(dp(context,42),dp(context,42)));
-            root.addView(header);
-            TextView app = text(context,safeLabel(context,packageName),16,Color.WHITE,Typeface.BOLD);
-            root.addView(app,margin(context,-1,-2,0,4,0,0));
-            TextView pkg = text(context,packageName,10,Color.rgb(165,174,194),Typeface.NORMAL);
-            pkg.setSingleLine(true); pkg.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
-            root.addView(pkg,margin(context,-1,-2,0,0,0,12));
-            ScrollView scroll = new ScrollView(context);
-            LinearLayout values = new LinearLayout(context);
-            values.setOrientation(LinearLayout.VERTICAL);
-            scroll.addView(values);
-            root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-            TextView footer = text(context,"● LIVE  •  Updating every 1 second",11,Color.rgb(105,145,255),Typeface.BOLD);
-            footer.setPadding(0,dp(context,10),0,0); root.addView(footer);
-            close.setOnClickListener(v->{dismiss();if(onDismiss!=null)onDismiss.run();});
-            WindowManager.LayoutParams lp=new WindowManager.LayoutParams(dp(context,330),dp(context,500),BuildType.overlay(context),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,PixelFormat.TRANSLUCENT);
-            lp.gravity=Gravity.CENTER;
-            root.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){dismiss();if(onDismiss!=null)onDismiss.run();return true;}return false;});
-            view=root; wm.addView(view,lp);
-            handler=new Handler(Looper.getMainLooper());
-            updater=()->{if(view==null)return;update(context,values,packageName);handler.postDelayed(updater,1000L);};
-            update(context,values,packageName);handler.postDelayed(updater,1000L);
-        } catch(Exception ignored) { dismiss(); }
-    }
-
-    private static void update(Context c,LinearLayout values,String pkg){
-        values.removeAllViews();
-        ActivityManager am=(ActivityManager)c.getSystemService(Context.ACTIVITY_SERVICE);
-        ActivityManager.MemoryInfo mi=new ActivityManager.MemoryInfo();
-        if(am!=null)am.getMemoryInfo(mi);
-        long pss=0;
-        try{
-            ApplicationInfo ai=c.getPackageManager().getApplicationInfo(pkg,0);
-            if(am!=null){android.os.Debug.MemoryInfo[] info=am.getProcessMemoryInfo(new int[]{ai.uid}); if(info.length>0)pss=info[0].getTotalPss()*1024L;}
-        }catch(Exception ignored){}
-        String state=isForeground(c,pkg)?"Foreground":"Background";
-        add(values,c,"Process State",state); add(values,c,"Memory (PSS)",formatBytes(pss));
-        add(values,c,"System RAM Used",formatBytes(Math.max(0,mi.totalMem-mi.availMem))+" / "+formatBytes(mi.totalMem));
-        add(values,c,"Memory Available",formatBytes(mi.availMem));
-        add(values,c,"CPU Usage","Unavailable for other apps");
-        add(values,c,"Current Activity",findCurrentActivity(c,pkg));
-    }
-    private static boolean isForeground(Context c,String pkg){try{UsageStatsManager u=(UsageStatsManager)c.getSystemService(Context.USAGE_STATS_SERVICE);if(u==null)return false;long e=System.currentTimeMillis();UsageEvents ev=u.queryEvents(e-5000,e);UsageEvents.Event x=new UsageEvents.Event();long t=-1;String p=null;while(ev.hasNextEvent()){ev.getNextEvent(x);if(x.getEventType()==UsageEvents.Event.ACTIVITY_RESUMED&&x.getTimeStamp()>t){t=x.getTimeStamp();p=x.getPackageName();}}return pkg.equals(p);}catch(Exception e){return false;}}
-    private static String findCurrentActivity(Context c,String pkg){try{UsageStatsManager u=(UsageStatsManager)c.getSystemService(Context.USAGE_STATS_SERVICE);long e=System.currentTimeMillis();UsageEvents ev=u.queryEvents(e-5000,e);UsageEvents.Event x=new UsageEvents.Event();long t=-1;String cls="Not available";while(ev.hasNextEvent()){ev.getNextEvent(x);if(x.getEventType()==UsageEvents.Event.ACTIVITY_RESUMED&&pkg.equals(x.getPackageName())&&x.getTimeStamp()>t){t=x.getTimeStamp();cls=x.getClassName();}}return cls==null||cls.isEmpty()?"Not available":cls;}catch(Exception e){return"Not available";}}
-    private static String safeLabel(Context c,String pkg){try{ApplicationInfo a=c.getPackageManager().getApplicationInfo(pkg,0);return c.getPackageManager().getApplicationLabel(a).toString();}catch(Exception e){return pkg;}}
-    private static void add(LinearLayout p,Context c,String k,String v){LinearLayout r=new LinearLayout(c);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(c,12),dp(c,8),dp(c,8),dp(c,8));r.setBackground(round(Color.rgb(28,35,52),12));TextView a=text(c,k,11,Color.rgb(165,174,194),Typeface.BOLD);r.addView(a,new LinearLayout.LayoutParams(0,-2,1));TextView b=text(c,v,12,Color.WHITE,Typeface.BOLD);b.setGravity(Gravity.END);r.addView(b,new LinearLayout.LayoutParams(0,-2,1));p.addView(r,margin(c,-1,-2,0,0,0,6));}
-    private static String formatBytes(long b){if(b<=0)return"N/A";if(b<1024)return b+" B";if(b<1024*1024)return String.format("%.1f KB",b/1024f);return String.format("%.1f MB",b/(1024f*1024f));}
-    public static void dismiss(){if(handler!=null&&updater!=null)handler.removeCallbacks(updater);handler=null;updater=null;if(view!=null){try{((WindowManager)view.getContext().getSystemService(Context.WINDOW_SERVICE)).removeView(view);}catch(Exception ignored){}view=null;}}
-    private static GradientDrawable round(int c,int r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(r*10f);return d;}
-    private static LinearLayout.LayoutParams margin(Context c,int w,int h,int l,int t,int r,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(w,h);p.setMargins(dp(c,l),dp(c,t),dp(c,r),dp(c,b));return p;}
-    private static TextView text(Context c,String s,float z,int col,int st){TextView t=new TextView(c);t.setText(s);t.setTextSize(z);t.setTextColor(col);t.setTypeface(Typeface.DEFAULT,st);return t;}
-    private static int dp(Context c,int v){return(int)(v*c.getResources().getDisplayMetrics().density+.5f);}
-    private static int BuildType_overlay(Context c){return android.os.Build.VERSION.SDK_INT>=26?WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY:WindowManager.LayoutParams.TYPE_PHONE;}
+ private static View view;private static Handler handler;private static Runnable updater;private LiveMonitorDialog(){}
+ public static boolean isShowing(){return view!=null;}
+ public static void show(Context context,WindowManager wm,String packageName,Runnable onDismiss){dismiss();if(packageName==null||wm==null)return;try{LinearLayout root=new LinearLayout(context);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(context,18),dp(context,14),dp(context,18),dp(context,14));root.setBackground(round(context,Color.rgb(16,21,34),22));LinearLayout header=new LinearLayout(context);header.setGravity(Gravity.CENTER_VERTICAL);TextView title=text(context,"Live Monitor",20,Color.WHITE,Typeface.BOLD);header.addView(title,new LinearLayout.LayoutParams(0,-2,1));TextView close=text(context,"×",28,Color.rgb(165,174,194),Typeface.BOLD);close.setGravity(Gravity.CENTER);header.addView(close,new LinearLayout.LayoutParams(dp(context,42),dp(context,42)));root.addView(header);TextView app=text(context,safeLabel(context,packageName),16,Color.WHITE,Typeface.BOLD);root.addView(app,margin(context,-1,-2,0,4,0,0));TextView pkg=text(context,packageName,10,Color.rgb(165,174,194),Typeface.NORMAL);pkg.setSingleLine(true);pkg.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);root.addView(pkg,margin(context,-1,-2,0,0,0,12));ScrollView scroll=new ScrollView(context);LinearLayout values=new LinearLayout(context);values.setOrientation(LinearLayout.VERTICAL);scroll.addView(values);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));TextView footer=text(context,"● LIVE  •  Updating every 1 second",11,Color.rgb(105,145,255),Typeface.BOLD);footer.setPadding(0,dp(context,10),0,0);root.addView(footer);close.setOnClickListener(v->{dismiss();if(onDismiss!=null)onDismiss.run();});WindowManager.LayoutParams lp=new WindowManager.LayoutParams(dp(context,330),dp(context,500),overlayType(),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,PixelFormat.TRANSLUCENT);lp.gravity=Gravity.CENTER;root.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){dismiss();if(onDismiss!=null)onDismiss.run();return true;}return false;});view=root;wm.addView(view,lp);handler=new Handler(Looper.getMainLooper());updater=()->{if(view==null)return;update(context,values,packageName);handler.postDelayed(updater,1000L);};update(context,values,packageName);handler.postDelayed(updater,1000L);}catch(Exception ignored){dismiss();}}
+ private static void update(Context c,LinearLayout values,String pkg){values.removeAllViews();ActivityManager am=(ActivityManager)c.getSystemService(Context.ACTIVITY_SERVICE);ActivityManager.MemoryInfo mi=new ActivityManager.MemoryInfo();if(am!=null)am.getMemoryInfo(mi);long pss=0;int pid=findPid(am,pkg);try{if(am!=null&&pid>0){android.os.Debug.MemoryInfo[] info=am.getProcessMemoryInfo(new int[]{pid});if(info.length>0)pss=info[0].getTotalPss()*1024L;}}catch(Exception ignored){}add(values,c,"Process State",isForeground(c,pkg)?"Foreground":"Background");add(values,c,"Memory (PSS)",formatBytes(pss));add(values,c,"System RAM Used",formatBytes(Math.max(0,mi.totalMem-mi.availMem))+" / "+formatBytes(mi.totalMem));add(values,c,"Memory Available",formatBytes(mi.availMem));add(values,c,"CPU Usage","Unavailable for other apps");add(values,c,"Process ID",pid>0?String.valueOf(pid):"Not available");add(values,c,"Current Activity",findCurrentActivity(c,pkg));}
+ private static int findPid(ActivityManager am,String pkg){if(am==null)return-1;try{java.util.List<ActivityManager.RunningAppProcessInfo> list=am.getRunningAppProcesses();if(list!=null)for(ActivityManager.RunningAppProcessInfo p:list){if(p.pkgList!=null)for(String x:p.pkgList)if(pkg.equals(x))return p.pid;}}catch(Exception ignored){}return-1;}
+ private static boolean isForeground(Context c,String pkg){try{UsageStatsManager u=(UsageStatsManager)c.getSystemService(Context.USAGE_STATS_SERVICE);if(u==null)return false;long e=System.currentTimeMillis();UsageEvents ev=u.queryEvents(e-5000,e);UsageEvents.Event x=new UsageEvents.Event();long t=-1;String p=null;while(ev.hasNextEvent()){ev.getNextEvent(x);if(x.getEventType()==UsageEvents.Event.ACTIVITY_RESUMED&&x.getTimeStamp()>t){t=x.getTimeStamp();p=x.getPackageName();}}return pkg.equals(p);}catch(Exception e){return false;}}
+ private static String findCurrentActivity(Context c,String pkg){try{UsageStatsManager u=(UsageStatsManager)c.getSystemService(Context.USAGE_STATS_SERVICE);long e=System.currentTimeMillis();UsageEvents ev=u.queryEvents(e-5000,e);UsageEvents.Event x=new UsageEvents.Event();long t=-1;String cls="Not available";while(ev.hasNextEvent()){ev.getNextEvent(x);if(x.getEventType()==UsageEvents.Event.ACTIVITY_RESUMED&&pkg.equals(x.getPackageName())&&x.getTimeStamp()>t){t=x.getTimeStamp();cls=x.getClassName();}}return cls==null||cls.isEmpty()?"Not available":cls;}catch(Exception e){return"Not available";}}
+ private static String safeLabel(Context c,String pkg){try{ApplicationInfo a=c.getPackageManager().getApplicationInfo(pkg,0);return c.getPackageManager().getApplicationLabel(a).toString();}catch(Exception e){return pkg;}}
+ private static void add(LinearLayout p,Context c,String k,String v){LinearLayout r=new LinearLayout(c);r.setGravity(Gravity.CENTER_VERTICAL);r.setPadding(dp(c,12),dp(c,8),dp(c,8),dp(c,8));r.setBackground(round(c,Color.rgb(28,35,52),12));TextView a=text(c,k,11,Color.rgb(165,174,194),Typeface.BOLD);r.addView(a,new LinearLayout.LayoutParams(0,-2,1));TextView b=text(c,v,12,Color.WHITE,Typeface.BOLD);b.setGravity(Gravity.END);r.addView(b,new LinearLayout.LayoutParams(0,-2,1));p.addView(r,margin(c,-1,-2,0,0,0,6));}
+ private static String formatBytes(long b){if(b<=0)return"N/A";if(b<1024)return b+" B";if(b<1024*1024)return String.format("%.1f KB",b/1024f);return String.format("%.1f MB",b/(1024f*1024f));}
+ public static void dismiss(){if(handler!=null&&updater!=null)handler.removeCallbacks(updater);handler=null;updater=null;if(view!=null){try{((WindowManager)view.getContext().getSystemService(Context.WINDOW_SERVICE)).removeView(view);}catch(Exception ignored){}view=null;}}
+ private static GradientDrawable round(Context c,int col,int r){GradientDrawable d=new GradientDrawable();d.setColor(col);d.setCornerRadius(dp(c,r));return d;}private static LinearLayout.LayoutParams margin(Context c,int w,int h,int l,int t,int r,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(w,h);p.setMargins(dp(c,l),dp(c,t),dp(c,r),dp(c,b));return p;}private static TextView text(Context c,String s,float z,int col,int st){TextView t=new TextView(c);t.setText(s);t.setTextSize(z);t.setTextColor(col);t.setTypeface(Typeface.DEFAULT,st);return t;}private static int dp(Context c,int v){return(int)(v*c.getResources().getDisplayMetrics().density+.5f);}private static int overlayType(){return android.os.Build.VERSION.SDK_INT>=26?WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY:WindowManager.LayoutParams.TYPE_PHONE;}
 }
