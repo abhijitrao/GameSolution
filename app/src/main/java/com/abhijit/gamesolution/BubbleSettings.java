@@ -25,6 +25,10 @@ public final class BubbleSettings {
         return prefs(context).getInt(TRANSPARENCY, 100);
     }
 
+    public static int getTransparency(Context context) {
+        return getTransparencyPercent(context);
+    }
+
     public static void setTransparency(Context context, int percent) {
         prefs(context).edit().putInt(TRANSPARENCY, Math.max(20, Math.min(100, percent))).apply();
     }
