@@ -76,7 +76,7 @@ jobs:
               path.write_text(text.replace(marker, method + marker, 1), encoding='utf-8')
           PY
 
-      - name: Add Recent Apps row
+      - name: Add Recent Apps row to bubble menu
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           python3 - <<'PY'
@@ -87,10 +87,6 @@ jobs:
           new = 'LinearLayout recentApps=buildRecentAppsRow();box.addView(recentApps,rowLp(dp(54),0));'
           if old in text:
               text = text.replace(old, new, 1)
-          elif 'buildRecentAppsRow()' in text:
-              raise SystemExit(0)
-          else:
-              raise SystemExit('Close menu option marker not found')
 
           marker = ' private LinearLayout option(String icon,String title,String subtitle,int color){'
           method = ''' private LinearLayout buildRecentAppsRow(){LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(8),0,dp(8),0);row.setBackground(round(card,15));int count=0;try{android.app.usage.UsageStatsManager usm=(android.app.usage.UsageStatsManager)getSystemService(Context.USAGE_STATS_SERVICE);long now=System.currentTimeMillis();java.util.List<android.app.usage.UsageStats> stats=usm==null?null:usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY,now-86400000L,now);if(stats!=null){java.util.Collections.sort(stats,(a,b)->Long.compare(b.getLastTimeUsed(),a.getLastTimeUsed()));java.util.HashSet<String> added=new java.util.HashSet<>();for(android.app.usage.UsageStats s:stats){String p=s.getPackageName();if(p==null||p.equals(getPackageName())||p.equals(targetPackage)||!added.add(p))continue;Intent launch=getPackageManager().getLaunchIntentForPackage(p);if(launch==null)continue;TextView icon=label("",1,text,Typeface.NORMAL);icon.setGravity(Gravity.CENTER);try{android.graphics.drawable.Drawable d=getPackageManager().getApplicationIcon(p);d.setBounds(0,0,dp(32),dp(32));icon.setCompoundDrawables(null,d,null,null);}catch(Exception ignored){continue;}icon.setContentDescription(getAppLabel(p));final String pkgName=p;icon.setOnClickListener(v->{vibrate(20);removeMenu();try{Intent i=getPackageManager().getLaunchIntentForPackage(pkgName);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);startActivity(i);}}catch(Exception ignored){}});row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=5)break;}}}catch(SecurityException ignored){}catch(Exception ignored){}if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));return row;}\n'''
