@@ -172,7 +172,7 @@ public final class LiveMonitorDialog {
         ActivityManager.MemoryInfo systemMemory = new ActivityManager.MemoryInfo();
         if (am != null) am.getMemoryInfo(systemMemory);
 
-        int pid = findPid(am, pkg);
+        int pid = findPid(am, c, pkg);
         Debug.MemoryInfo processMemory = null;
         if (am != null && pid > 0) {
             try {
@@ -183,14 +183,14 @@ public final class LiveMonitorDialog {
 
         int cpu = readCpuPercent(pid);
         if (cpu >= 0) addHistory(cpuHistory, cpu);
-        long pss = processMemory != null ? processMemory.getTotalPss() * 1024L : 0L;
+        long pss = processMemory != null ? processMemory.getTotalPss() * 1024L : -1L;
         int memoryMb = processMemory != null ? (int) Math.round(processMemory.getTotalPss() / 1024.0) : -1;
         if (memoryMb >= 0) addHistory(memoryHistory, memoryMb);
 
-        String state = isForeground(c, pkg) ? "Foreground" : "Background";
+        String state = getProcessState(am, c, pkg, pid);
         stateValue.setText(state);
         pidValue.setText(pid > 0 ? String.valueOf(pid) : "Not available");
-        threadsValue.setText(pid > 0 ? String.valueOf(readThreadCount(pid)) : "Not available");
+        threadsValue.setText(pid > 0 ? formatInt(readThreadCount(pid)) : "Not available");
         cpuValue.setText(cpu >= 0 ? cpu + "%" : "N/A");
         memoryValue.setText(formatBytes(pss));
 
@@ -202,7 +202,8 @@ public final class LiveMonitorDialog {
         }
         activityValue.setText(lastActivity);
         if (lastActivityTimestamp > 0) {
-            String suffix = isForeground(c, pkg) ? "Active for " + duration(activityStartTimestamp)
+            String suffix = "Foreground".equals(state)
+                    ? "Active for " + duration(activityStartTimestamp)
                     : "Last detected " + ago(lastActivityTimestamp);
             activityAgeValue.setText(suffix);
         } else {
@@ -236,6 +237,53 @@ public final class LiveMonitorDialog {
         temperatureValue.setText(readTemperature(c));
         cpuHistoryValue.setText(sparkline(cpuHistory) + "  " + (cpu >= 0 ? cpu + "%" : "N/A"));
         memoryHistoryValue.setText(sparkline(memoryHistory) + "  " + (memoryMb >= 0 ? memoryMb + " MB" : "N/A"));
+    }
+
+    private static int findPid(ActivityManager am, Context c, String packageName) {
+        if (am == null || packageName == null) return -1;
+        int uid = -1;
+        try {
+            uid = c.getPackageManager().getApplicationInfo(packageName, 0).uid;
+        } catch (Exception ignored) {}
+        try {
+            java.util.List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+            if (processes == null) return -1;
+            int fallbackPid = -1;
+            for (ActivityManager.RunningAppProcessInfo process : processes) {
+                if (process == null || process.pid <= 0) continue;
+                if (packageName.equals(process.processName)) return process.pid;
+                if (process.processName != null && process.processName.startsWith(packageName + ":")) {
+                    if (fallbackPid < 0) fallbackPid = process.pid;
+                }
+                if (uid >= 0 && process.uid == uid) {
+                    if (process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                        return process.pid;
+                    }
+                    if (fallbackPid < 0) fallbackPid = process.pid;
+                }
+            }
+            return fallbackPid;
+        } catch (Exception ignored) { return -1; }
+    }
+
+    private static String getProcessState(ActivityManager am, Context c, String pkg, int pid) {
+        if (am != null && pid > 0) {
+            try {
+                java.util.List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+                if (processes != null) {
+                    for (ActivityManager.RunningAppProcessInfo p : processes) {
+                        if (p != null && p.pid == pid) {
+                            return p.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+                                    ? "Foreground" : "Background";
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        ActivitySnapshot snapshot = findActivity(c, pkg);
+        return snapshot.activity != null && snapshot.timestamp > 0
+                && System.currentTimeMillis() - snapshot.timestamp < 60_000L
+                ? "Foreground" : "Background";
     }
 
     private static int readCpuPercent(int pid) {
@@ -309,11 +357,6 @@ public final class LiveMonitorDialog {
             }
             return new ActivitySnapshot(cls, t);
         } catch (Exception ignored) { return new ActivitySnapshot(null, 0); }
-    }
-
-    private static boolean isForeground(Context c, String pkg) {
-        ActivitySnapshot s = findActivity(c, pkg);
-        return s.activity != null && s.timestamp > 0 && (System.currentTimeMillis() - s.timestamp) < 60_000L;
     }
 
     private static long uidForPackage(Context c, String pkg) {
@@ -435,6 +478,8 @@ public final class LiveMonitorDialog {
             return c.getPackageManager().getApplicationLabel(a).toString();
         } catch (Exception e) { return pkg; }
     }
+
+    private static String formatInt(int value) { return value >= 0 ? String.valueOf(value) : "N/A"; }
 
     private static String formatBytes(long b) {
         if (b < 0) return "N/A";
