@@ -1,5 +1,7 @@
 package com.abhijit.gamesolution;
 
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -12,6 +14,9 @@ import java.util.List;
 
 /** Best-effort app task restart for ordinary, non-root Android devices. */
 public final class RestartExecutor {
+    private static final long RELAUNCH_INTERVAL_MS = 2000L;
+    private static final int MAX_RELAUNCH_ATTEMPTS = 10;
+
     private RestartExecutor() {}
 
     public static boolean restart(Context context, String packageName) {
@@ -21,27 +26,72 @@ public final class RestartExecutor {
             final Intent launch = findLaunchIntent(pm, packageName);
             if (launch == null) return false;
 
-            // Move to Home first so the target gets a clean foreground transition.
+            // Keep the working HOME transition.
             Intent home = new Intent(Intent.ACTION_MAIN);
             home.addCategory(Intent.CATEGORY_HOME);
             home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(home);
 
-            // Experiment 3: clear activities above the target launcher instead of
-            // clearing the whole task. This can reset the visible Activity stack
-            // while keeping the working HOME -> relaunch flow.
+            // Experiment 4: explicitly clear the target task and create a fresh task.
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                    | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                try {
-                    context.startActivity(launch);
-                } catch (Exception ignored) { }
-            }, 1500L);
+            Handler handler = new Handler(Looper.getMainLooper());
+            final int[] attempts = {0};
+            Runnable relaunchCheck = new Runnable() {
+                @Override
+                public void run() {
+                    if (isPackageForeground(context, packageName)) {
+                        return;
+                    }
+
+                    if (attempts[0]++ >= MAX_RELAUNCH_ATTEMPTS) {
+                        return;
+                    }
+
+                    try {
+                        context.startActivity(launch);
+                    } catch (Exception ignored) {
+                    }
+
+                    handler.postDelayed(this, RELAUNCH_INTERVAL_MS);
+                }
+            };
+
+            // Give Home a moment to become foreground before the first launch.
+            handler.postDelayed(relaunchCheck, 1500L);
             return true;
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private static boolean isPackageForeground(Context context, String packageName) {
+        UsageStatsManager manager = (UsageStatsManager) context.getSystemService(
+                Context.USAGE_STATS_SERVICE);
+        if (manager == null) return false;
+
+        long end = System.currentTimeMillis();
+        UsageEvents events = manager.queryEvents(end - 10_000L, end);
+        if (events == null) return false;
+
+        UsageEvents.Event event = new UsageEvents.Event();
+        long latestTimestamp = -1L;
+        String latestPackage = null;
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event);
+            int type = event.getEventType();
+            if (type != UsageEvents.Event.ACTIVITY_RESUMED
+                    && type != UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                continue;
+            }
+            if (event.getTimeStamp() > latestTimestamp) {
+                latestTimestamp = event.getTimeStamp();
+                latestPackage = event.getPackageName();
+            }
+        }
+        return packageName.equals(latestPackage);
     }
 
     public static boolean openForceStopPage(Context context, String packageName) {
