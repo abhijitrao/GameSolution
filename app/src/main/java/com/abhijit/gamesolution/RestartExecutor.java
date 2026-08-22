@@ -5,8 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import java.util.List;
 
 /** Best-effort app restart for ordinary, non-root Android devices. */
@@ -15,14 +17,11 @@ public final class RestartExecutor {
 
     public static boolean restart(Context context, String packageName) {
         if (packageName == null || packageName.equals(context.getPackageName())) return false;
-
         try {
             final PackageManager pm = context.getPackageManager();
             final Intent launch = findLaunchIntent(pm, packageName);
             if (launch == null) return false;
 
-            // First move the target out of the foreground. Once it is in the background,
-            // Android permits killBackgroundProcesses() for ordinary apps on many devices.
             Intent home = new Intent(Intent.ACTION_MAIN);
             home.addCategory(Intent.CATEGORY_HOME);
             home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -32,8 +31,7 @@ public final class RestartExecutor {
                 try {
                     ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
                     if (am != null) am.killBackgroundProcesses(packageName);
-                } catch (Exception ignored) {
-                }
+                } catch (Exception ignored) { }
 
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     try {
@@ -42,11 +40,23 @@ public final class RestartExecutor {
                                 | Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
                         context.startActivity(launch);
-                    } catch (Exception ignored) {
-                    }
+                    } catch (Exception ignored) { }
                 }, 250L);
             }, 250L);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
 
+    /** Opens App Info. The user can press Force stop there, then return to GameSolution. */
+    public static boolean openForceStopPage(Context context, String packageName) {
+        if (packageName == null || packageName.equals(context.getPackageName())) return false;
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + packageName));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
             return true;
         } catch (Exception ignored) {
             return false;
