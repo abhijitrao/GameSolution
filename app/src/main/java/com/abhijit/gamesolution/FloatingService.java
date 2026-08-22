@@ -52,24 +52,57 @@ public class FloatingService extends Service {
     private void openMenu(int x, int y) {
         removeMenu(); targetPackage = ForegroundAppResolver.getPreviousPackage(this, getPackageName());
         if (targetPackage == null) { Toast.makeText(this, "Unable to identify foreground app. Allow Usage Access.", Toast.LENGTH_SHORT).show(); return; }
-        LinearLayout cardView = new LinearLayout(this); cardView.setOrientation(LinearLayout.VERTICAL); cardView.setPadding(dp(18), dp(14), dp(18), dp(10)); cardView.setBackground(round(navy, 20)); cardView.setElevation(22f);
-        TextView eyebrow = label("CURRENT APP", 11, primary, Typeface.BOLD); cardView.addView(eyebrow);
-        TextView title = label(shortPackage(targetPackage), 17, text, Typeface.BOLD); title.setPadding(0, dp(3), 0, dp(12)); cardView.addView(title);
+
+        LinearLayout cardView = new LinearLayout(this);
+        cardView.setOrientation(LinearLayout.VERTICAL);
+        cardView.setPadding(dp(18), dp(14), dp(18), dp(12));
+        cardView.setBackground(round(navy, 20));
+        cardView.setElevation(22f);
+
+        TextView eyebrow = label("CURRENT APP", 11, primary, Typeface.BOLD);
+        cardView.addView(eyebrow);
+
+        TextView title = label(shortPackage(targetPackage), 17, text, Typeface.BOLD);
+        title.setPadding(0, dp(3), 0, dp(1));
+        cardView.addView(title);
+
+        TextView packageName = label(targetPackage, 12, secondary, Typeface.NORMAL);
+        packageName.setSingleLine(true);
+        packageName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        cardView.addView(packageName, new LinearLayout.LayoutParams(-1, dp(22)));
 
         LinearLayout restart = option("↻", "Restart App", "Clear task and relaunch", text);
-        cardView.addView(restart, rowLp(dp(58)));
+        cardView.addView(restart, rowLp(dp(58), dp(8)));
         restart.setOnClickListener(v -> { String pkg = targetPackage; removeMenu(); boolean ok = RestartExecutor.restart(this, pkg); if (!ok) Toast.makeText(this, "Unable to relaunch " + pkg, Toast.LENGTH_SHORT).show(); });
 
         LinearLayout forceStop = option("■", "Force Stop & Restart", "Open Android App Info", danger);
-        cardView.addView(forceStop, rowLp(dp(58)));
+        cardView.addView(forceStop, rowLp(dp(58), dp(8)));
         forceStop.setOnClickListener(v -> { String pkg = targetPackage; removeMenu(); boolean ok = RestartExecutor.openForceStopPage(this, pkg); if (ok) Toast.makeText(this, "Tap Force stop, then launch the game again.", Toast.LENGTH_LONG).show(); else Toast.makeText(this, "Unable to open App Info for " + pkg, Toast.LENGTH_SHORT).show(); });
 
         LinearLayout close = option("×", "Close", "Dismiss this menu", secondary);
-        cardView.addView(close, rowLp(dp(48)));
+        cardView.addView(close, rowLp(dp(48), 0));
         close.setOnClickListener(v -> removeMenu());
 
-        WindowManager.LayoutParams menuParams = new WindowManager.LayoutParams(dp(292), dp(250), overlayType(), WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
-        menuParams.gravity = Gravity.TOP | Gravity.END; menuParams.x = Math.max(dp(8), x + dp(70)); menuParams.y = Math.max(dp(72), y); menuView = cardView; windowManager.addView(menuView, menuParams);
+        WindowManager.LayoutParams menuParams = new WindowManager.LayoutParams(
+                dp(292), dp(294), overlayType(),
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                PixelFormat.TRANSLUCENT);
+        menuParams.gravity = Gravity.TOP | Gravity.END;
+        menuParams.x = Math.max(dp(8), x + dp(70));
+        menuParams.y = Math.max(dp(72), y);
+
+        cardView.setOnTouchListener((v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_OUTSIDE) {
+                removeMenu();
+                return true;
+            }
+            return false;
+        });
+
+        menuView = cardView;
+        windowManager.addView(menuView, menuParams);
     }
 
     private LinearLayout option(String icon, String title, String subtitle, int iconColor) {
@@ -80,7 +113,13 @@ public class FloatingService extends Service {
         row.addView(copy, new LinearLayout.LayoutParams(0, -1, 1));
         return row;
     }
-    private LinearLayout.LayoutParams rowLp(int height) { return new LinearLayout.LayoutParams(-1, height); }
+
+    private LinearLayout.LayoutParams rowLp(int height, int bottomMargin) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, height);
+        params.bottomMargin = dp(bottomMargin);
+        return params;
+    }
+
     private TextView label(String value, float size, int color, int style) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color); v.setTypeface(Typeface.DEFAULT, style); return v; }
     private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
     private String shortPackage(String pkg) { int dot = pkg.lastIndexOf('.'); return dot >= 0 && dot < pkg.length() - 1 ? pkg.substring(dot + 1) : pkg; }
