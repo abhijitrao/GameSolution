@@ -1,17 +1,14 @@
 package com.abhijit.gamesolution;
 
-import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.Settings;
 import java.util.List;
 
-/** Best-effort app restart for ordinary, non-root Android devices. */
+/** Best-effort app task restart for ordinary, non-root Android devices. */
 public final class RestartExecutor {
     private RestartExecutor() {}
 
@@ -22,27 +19,26 @@ public final class RestartExecutor {
             final Intent launch = findLaunchIntent(pm, packageName);
             if (launch == null) return false;
 
-            // Keep the previously working HOME transition, but do not kill the target process.
+            // Keep the working HOME transition, but explicitly create a fresh task.
             Intent home = new Intent(Intent.ACTION_MAIN);
             home.addCategory(Intent.CATEGORY_HOME);
             home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(home);
 
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                    | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+            context.getMainExecutor().execute(() -> {
                 try {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                            | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                            | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
                     context.startActivity(launch);
                 } catch (Exception ignored) { }
-            }, 500L);
+            });
             return true;
         } catch (Exception ignored) {
             return false;
         }
     }
 
-    /** Opens App Info. The user can press Force stop there, then return to GameSolution. */
     public static boolean openForceStopPage(Context context, String packageName) {
         if (packageName == null || packageName.equals(context.getPackageName())) return false;
         try {
