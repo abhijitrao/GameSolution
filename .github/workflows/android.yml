@@ -15,111 +15,76 @@ jobs:
   build:
     name: Build & Test Android
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Install Android SDK 35
         run: yes | sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-
       - name: Restore signing keystore
         if: ${{ github.event_name != 'pull_request' }}
         env:
           KEYSTORE_B64: ${{ secrets.GAME_KEYSTORE_BASE64 }}
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "GAME_KEYSTORE_BASE64 secret is missing"
-            exit 1
-          fi
+          if [ -z "$KEYSTORE_B64" ]; then exit 1; fi
           echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/gamesolution-release.jks"
           echo "GAME_KEYSTORE_FILE=$RUNNER_TEMP/gamesolution-release.jks" >> "$GITHUB_ENV"
-
       - name: Fix Live Monitor source
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java')
-          text = path.read_text(encoding='utf-8')
-          marker = '    private static int readCpuPercent(int pid) {'
-          method = '\n'.join([
-              '    private static int findPid(ActivityManager am, String packageName) {',
-              '        if (am == null || packageName == null) return -1;',
-              '        try {',
-              '            java.util.List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();',
-              '            if (processes == null) return -1;',
-              '            for (ActivityManager.RunningAppProcessInfo process : processes) {',
-              '                if (process != null && packageName.equals(process.processName)) return process.pid;',
-              '            }',
-              '        } catch (Exception ignored) {}',
-              '        return -1;',
-              '    }',
-              '',
-          ])
+          path=Path('app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java')
+          text=path.read_text(encoding='utf-8')
+          marker='    private static int readCpuPercent(int pid) {'
+          method='\n'.join(['    private static int findPid(ActivityManager am, String packageName) {','        if (am == null || packageName == null) return -1;','        try {','            java.util.List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();','            if (processes == null) return -1;','            for (ActivityManager.RunningAppProcessInfo process : processes) {','                if (process != null && packageName.equals(process.processName)) return process.pid;','            }','        } catch (Exception ignored) {}','        return -1;','    }',''])
           if 'private static int findPid(ActivityManager am, String packageName)' not in text:
-              if marker not in text: raise SystemExit('LiveMonitorDialog marker not found')
-              path.write_text(text.replace(marker, method + marker, 1), encoding='utf-8')
+            if marker not in text: raise SystemExit('LiveMonitorDialog marker not found')
+            path.write_text(text.replace(marker,method+marker,1),encoding='utf-8')
           PY
-
       - name: Add Recent Apps row to bubble menu
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java')
-          text = path.read_text(encoding='utf-8')
-          old = 'LinearLayout close=option("×","Close","Dismiss this menu",secondary);box.addView(close,rowLp(dp(50),0));close.setOnClickListener(v->{vibrate(12);removeMenu();});'
-          new = 'LinearLayout recentApps=buildRecentAppsRow();box.addView(recentApps,rowLp(dp(54),0));'
-          if old in text:
-              text = text.replace(old, new, 1)
-
-          marker = ' private LinearLayout option(String icon,String title,String subtitle,int color){'
-          method = ''' private LinearLayout buildRecentAppsRow(){LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(8),0,dp(8),0);row.setBackground(round(card,15));int count=0;try{android.app.usage.UsageStatsManager usm=(android.app.usage.UsageStatsManager)getSystemService(Context.USAGE_STATS_SERVICE);long now=System.currentTimeMillis();java.util.List<android.app.usage.UsageStats> stats=usm==null?null:usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY,now-86400000L,now);if(stats!=null){java.util.Collections.sort(stats,(a,b)->Long.compare(b.getLastTimeUsed(),a.getLastTimeUsed()));java.util.HashSet<String> added=new java.util.HashSet<>();for(android.app.usage.UsageStats s:stats){String p=s.getPackageName();if(p==null||p.equals(getPackageName())||p.equals(targetPackage)||!added.add(p))continue;Intent launch=getPackageManager().getLaunchIntentForPackage(p);if(launch==null)continue;TextView icon=label("",1,text,Typeface.NORMAL);icon.setGravity(Gravity.CENTER);try{android.graphics.drawable.Drawable d=getPackageManager().getApplicationIcon(p);d.setBounds(0,0,dp(32),dp(32));icon.setCompoundDrawables(null,d,null,null);}catch(Exception ignored){continue;}icon.setContentDescription(getAppLabel(p));final String pkgName=p;icon.setOnClickListener(v->{vibrate(20);removeMenu();try{Intent i=getPackageManager().getLaunchIntentForPackage(pkgName);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);startActivity(i);}}catch(Exception ignored){}});row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=5)break;}}}catch(SecurityException ignored){}catch(Exception ignored){}if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));return row;}\n'''
+          path=Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java')
+          text=path.read_text(encoding='utf-8')
+          old='LinearLayout recentApps=buildRecentAppsRow();box.addView(recentApps,rowLp(dp(54),0));'
+          if old in text: text=text.replace(old,'LinearLayout recentApps=buildRecentAppsRow();box.addView(recentApps,rowLp(dp(54),0));',1)
+          marker=' private LinearLayout option(String icon,String title,String subtitle,int color){'
+          method=''' private LinearLayout buildRecentAppsRow(){LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(8),0,dp(8),0);row.setBackground(round(card,15));int count=0;try{android.app.usage.UsageStatsManager usm=(android.app.usage.UsageStatsManager)getSystemService(Context.USAGE_STATS_SERVICE);long now=System.currentTimeMillis();java.util.List<android.app.usage.UsageStats> stats=usm==null?null:usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY,now-86400000L,now);if(stats!=null){java.util.Collections.sort(stats,(a,b)->Long.compare(b.getLastTimeUsed(),a.getLastTimeUsed()));java.util.HashSet<String> added=new java.util.HashSet<>();for(android.app.usage.UsageStats s:stats){String p=s.getPackageName();if(p==null||p.equals(getPackageName())||p.equals(targetPackage)||!added.add(p))continue;Intent launch=getPackageManager().getLaunchIntentForPackage(p);if(launch==null)continue;TextView icon=label("",1,text,Typeface.NORMAL);icon.setGravity(Gravity.CENTER);try{android.graphics.drawable.Drawable d=getPackageManager().getApplicationIcon(p);d.setBounds(0,0,dp(48),dp(48));icon.setCompoundDrawables(null,d,null,null);}catch(Exception ignored){continue;}icon.setContentDescription(getAppLabel(p));final String pkgName=p;icon.setOnClickListener(v->{vibrate(20);removeMenu();try{Intent i=getPackageManager().getLaunchIntentForPackage(pkgName);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);startActivity(i);}}catch(Exception ignored){}});row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=4)break;}}}catch(Exception ignored){}if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));return row;}\n'''
           if 'private LinearLayout buildRecentAppsRow()' not in text:
-              if marker not in text: raise SystemExit('option method marker not found')
-              text = text.replace(marker, method + marker, 1)
+            if marker not in text: raise SystemExit('option method marker not found')
+            text=text.replace(marker,method+marker,1)
           path.write_text(text,encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java
-          if ! git diff --cached --quiet; then
-            git commit -m "Add recent app icons to bubble menu"
-            git push
-          fi
-
+          if ! git diff --cached --quiet; then git commit -m "Refine recent app icons"; git push; fi
       - name: Run unit tests
         run: gradle testDebugUnitTest --stacktrace
-
       - name: Run Android Lint
         run: gradle lintDebug --stacktrace
-
       - name: Build debug APK
         if: ${{ github.event_name == 'pull_request' }}
         run: gradle assembleDebug --stacktrace
-
       - name: Build signed release APK
         if: ${{ github.event_name != 'pull_request' }}
         env:
           GAME_KEYSTORE_PASSWORD: ${{ secrets.GAME_KEYSTORE_PASSWORD }}
           GAME_KEY_ALIAS: ${{ secrets.GAME_KEY_ALIAS }}
         run: gradle assembleRelease --stacktrace
-
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -127,7 +92,6 @@ jobs:
           path: ${{ github.event_name == 'pull_request' && 'app/build/outputs/apk/debug/app-debug.apk' || 'app/build/outputs/apk/release/app-release.apk' }}
           if-no-files-found: error
           retention-days: 30
-
       - name: Upload lint report
         if: always()
         uses: actions/upload-artifact@v4
@@ -136,7 +100,6 @@ jobs:
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
           retention-days: 14
-
       - name: Create GitHub Release with APK
         if: startsWith(github.ref, 'refs/tags/v') && success()
         uses: softprops/action-gh-release@v2
