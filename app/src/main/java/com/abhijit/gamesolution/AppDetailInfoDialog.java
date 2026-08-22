@@ -7,6 +7,7 @@ public final class AppDetailInfoDialog {
  private AppDetailInfoDialog(){}
  public static boolean isShowing(){return currentDialog!=null;}
  public static void dismiss(){if(currentDialog==null)return;View v=currentDialog;WindowManager wm=currentWindowManager;currentDialog=null;currentWindowManager=null;if(wm!=null)try{wm.removeView(v);}catch(Exception ignored){}}
+ public static void dismissFromBubbleTap(){dismiss();}
  public static void show(Context c,String pkg,WindowManager wm,View current,Runnable dismissMenu){
   dismiss();if(current!=null&&dismissMenu!=null)dismissMenu.run();PackageManager pm=c.getPackageManager();PackageInfo pi;
   try{pi=pm.getPackageInfo(pkg,PackageManager.GET_PERMISSIONS|PackageManager.GET_ACTIVITIES|PackageManager.GET_SERVICES|PackageManager.GET_RECEIVERS|PackageManager.GET_PROVIDERS);}catch(Exception e){Toast.makeText(c,"Unable to read app information: "+e.getClass().getSimpleName(),Toast.LENGTH_SHORT).show();return;}
