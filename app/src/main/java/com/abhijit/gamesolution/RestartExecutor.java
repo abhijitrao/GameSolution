@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import java.util.List;
 
@@ -28,7 +30,7 @@ public final class RestartExecutor {
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                     | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-            context.getMainExecutor().execute(() -> {
+            new Handler(Looper.getMainLooper()).post(() -> {
                 try {
                     context.startActivity(launch);
                 } catch (Exception ignored) { }
