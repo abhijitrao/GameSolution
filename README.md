@@ -1,4 +1,4 @@
-# GameSolution
+# GameSolution 
 
 Android floating bubble utility for restarting the app currently in use.
 
