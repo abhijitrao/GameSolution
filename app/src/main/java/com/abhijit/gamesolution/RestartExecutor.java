@@ -21,20 +21,23 @@ public final class RestartExecutor {
             final Intent launch = findLaunchIntent(pm, packageName);
             if (launch == null) return false;
 
-            // Keep the working HOME transition, but explicitly create a fresh task.
+            // Move to Home first so the target gets a clean foreground transition.
             Intent home = new Intent(Intent.ACTION_MAIN);
             home.addCategory(Intent.CATEGORY_HOME);
             home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(home);
 
+            // Experiment 3: clear activities above the target launcher instead of
+            // clearing the whole task. This can reset the visible Activity stack
+            // while keeping the working HOME -> relaunch flow.
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                    | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-            new Handler(Looper.getMainLooper()).post(() -> {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 try {
                     context.startActivity(launch);
                 } catch (Exception ignored) { }
-            });
+            }, 1500L);
             return true;
         } catch (Exception ignored) {
             return false;
