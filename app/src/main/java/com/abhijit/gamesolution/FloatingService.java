@@ -54,9 +54,11 @@ public class FloatingService extends Service {
             case MotionEvent.ACTION_DOWN: dragging = false; downX = event.getRawX(); downY = event.getRawY(); startX = params.x; startY = params.y; return true;
             case MotionEvent.ACTION_MOVE:
                 float dx = event.getRawX() - downX, dy = event.getRawY() - downY;
-                if (Math.abs(dx) > dp(6) || Math.abs(dy) > dp(6)) { dragging = true; removeMenu(); }
+                if (Math.abs(dx) > dp(6) || Math.abs(dy) > dp(6)) { if (!dragging) vibrate(12); dragging = true; removeMenu(); }
                 params.x = clamp(startX + (int) dx, dp(4), getResources().getDisplayMetrics().widthPixels - dp(BUBBLE_SIZE_DP + 4)); params.y = clamp(startY + (int) dy, dp(48), getResources().getDisplayMetrics().heightPixels - dp(BUBBLE_SIZE_DP + 8)); windowManager.updateViewLayout(bubble, params); return true;
-            case MotionEvent.ACTION_UP: if (!dragging) { vibrate(18); openMenu(params.x, params.y); } return true;
+            case MotionEvent.ACTION_UP:
+                if (dragging) vibrate(12); else { vibrate(18); openMenu(params.x, params.y); }
+                return true;
         } return false; });
         bubbleView = bubble; windowManager.addView(bubbleView, params);
     }
