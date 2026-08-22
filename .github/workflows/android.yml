@@ -44,6 +44,8 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           p=Path('app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java')
           t=p.read_text(encoding='utf-8')
           marker='    private static int readCpuPercent(int pid) {'
@@ -60,27 +62,35 @@ jobs:
           s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=5)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;')
           s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=4)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;')
           s=s.replace('i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);','i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);')
-
-          # Semi mode: keep exactly 2/3 of the bubble visible and 1/3 outside.
-          s=s.replace('int hidden=(w*2)/3;return Math.max(-hidden,Math.min(x,sw-w/3));','int hidden=w/3;return Math.max(-hidden,Math.min(x,sw-(2*w)/3));')
-          s=s.replace('target=(p.x+w/2<sw/2)?-(2*w/3):sw-(w/3);','target=(p.x+w/2<sw/2)?-w/3:sw-(2*w/3);')
-          s=s.replace('p.x=enabled?(p.x+w/2<sw/2?-(2*w)/3:sw-w/3):(p.x<sw/2?0:sw-w);','p.x=enabled?(p.x+w/2<sw/2?-w/3:sw-(2*w)/3):(p.x<sw/2?0:sw-w);')
-
-          # Normalize the restored position immediately when Semi Icon Visible is enabled.
-          old='else{params.x=sw-dp(size);params.y=dp(220);}'
-          new='else{params.x=sw-dp(size);params.y=dp(220);} if(BubbleSettings.isSemiIconVisible(this)){int w=dp(size);params.x=(params.x+w/2<sw/2)?-w/3:sw-(2*w)/3;}'
-          s=s.replace(old,new)
-
-          # Keep a visible gap between the bubble and the menu/dialog.
           s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
           s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP+8);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
+
+          # Replace the semi-position method with pixel-based positioning. The old
+          # implementation mixed dp and pixel values and then clamped the negative
+          # position, which made the bubble appear fully visible.
+          new_move=''' private void moveBubbleForSemiSetting(boolean enabled){if(bubbleView==null)return;int sw=getResources().getDisplayMetrics().widthPixels;int sh=getResources().getDisplayMetrics().heightPixels;WindowManager.LayoutParams p=(WindowManager.LayoutParams)bubbleView.getLayoutParams();int w=Math.max(1,p.width);boolean right=p.x+w/2>=sw/2;if(enabled){p.x=right?sw-(2*w/3):-(w/3);}else{p.x=right?sw-w:0;}p.x=Math.max(enabled?-(w/3):0,Math.min(p.x,enabled?sw-(2*w/3):sw-w));p.y=Math.max(dp(48),Math.min(p.y,sh-w-dp(8)));windowManager.updateViewLayout(bubbleView,p);BubbleSettings.setPosition(this,p.x/(float)sw,p.y/(float)sh);}\n'''
+          pattern=r' private void moveBubbleForSemiSetting\(boolean enabled\)\{.*?\} private void applyBubbleSettings'
+          if re.search(pattern,s,re.S):
+            s=re.sub(pattern,new_move+' private void applyBubbleSettings',s,count=1,flags=re.S)
+          else:
+            raise SystemExit('moveBubbleForSemiSetting method not found')
+
+          # Replace size application so resizing preserves the current side/center,
+          # while Semi mode always keeps exactly one third outside the display.
+          new_apply=''' private void applyBubbleSettings(){if(bubbleView==null)return;int size=BubbleSettings.getSize(this);WindowManager.LayoutParams p=(WindowManager.LayoutParams)bubbleView.getLayoutParams();int sw=getResources().getDisplayMetrics().widthPixels,sh=getResources().getDisplayMetrics().heightPixels;int oldW=Math.max(1,p.width),newW=dp(size);float centerX=p.x+oldW/2f,centerY=p.y+oldW/2f;boolean right=p.x+oldW/2>=sw/2;p.width=newW;p.height=newW;if(BubbleSettings.isSemiIconVisible(this)){p.x=right?sw-(2*newW/3):-(newW/3);}else{p.x=Math.max(0,Math.min((int)(centerX-newW/2f),sw-newW));}p.y=Math.max(dp(48),Math.min((int)(centerY-newW/2f),sh-newW-dp(8)));windowManager.updateViewLayout(bubbleView,p);bubbleView.setAlpha(BubbleSettings.getTransparency(this)/100f);BubbleSettings.setPosition(this,p.x/(float)sw,p.y/(float)sh);}\n'''
+          pattern2=r' private void applyBubbleSettings\(\)\{.*?\} private LinearLayout option'
+          if re.search(pattern2,s,re.S):
+            s=re.sub(pattern2,new_apply+' private LinearLayout option',s,count=1,flags=re.S)
+          else:
+            raise SystemExit('applyBubbleSettings method not found')
+
           f.write_text(s,encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java
           if ! git diff --cached --quiet; then
-            git commit -m "Fix semi bubble position and menu spacing"
+            git commit -m "Fix semi bubble position and size anchoring"
             git push
           fi
       - name: Run unit tests
