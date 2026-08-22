@@ -133,3 +133,5 @@ jobs:
         with:
           generate_release_notes: true
           files: app/build/outputs/apk/release/app-release.apk
+
+# Trigger CI after fixing Live Monitor source
