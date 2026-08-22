@@ -10,6 +10,7 @@ public final class BubbleSettings {
     private static final String POS_X = "position_x_ratio";
     private static final String POS_Y = "position_y_ratio";
     private static final String SNAP = "snap_to_edge";
+    private static final String SEMI_VISIBLE = "semi_icon_visible";
     private BubbleSettings() {}
 
     private static SharedPreferences prefs(Context context) { return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
@@ -25,4 +26,6 @@ public final class BubbleSettings {
     public static void setPosition(Context context, float xRatio, float yRatio) { prefs(context).edit().putFloat(POS_X, Math.max(0f, Math.min(1f, xRatio))).putFloat(POS_Y, Math.max(0f, Math.min(1f, yRatio))).apply(); }
     public static boolean isSnapToEdge(Context context) { return prefs(context).getBoolean(SNAP, false); }
     public static void setSnapToEdge(Context context, boolean enabled) { prefs(context).edit().putBoolean(SNAP, enabled).apply(); }
+    public static boolean isSemiIconVisible(Context context) { return prefs(context).getBoolean(SEMI_VISIBLE, false); }
+    public static void setSemiIconVisible(Context context, boolean enabled) { prefs(context).edit().putBoolean(SEMI_VISIBLE, enabled).apply(); }
 }
