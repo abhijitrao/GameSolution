@@ -1,0 +1,37 @@
+name: Fix CI Clamp Signature
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix workflow source patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/android.yml')
+          s = p.read_text(encoding='utf-8')
+          old = "s=replace_method(s,'private int clampBubbleX(int x,int size,int sw)',clamp_method)"
+          new = "s=replace_method(s,'private int clampBubbleX(int x,int widthPx,int sw)',clamp_method)"
+          if old not in s:
+              raise SystemExit('Expected broken clamp signature not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/android.yml
+          git commit -m "Fix bubble clamp method signature"
+          git push
+      - name: Remove temporary workflow
+        run: |
+          git rm .github/workflows/fix-ci-clamp-signature.yml
+          git commit -m "Remove temporary CI fix workflow"
+          git push
