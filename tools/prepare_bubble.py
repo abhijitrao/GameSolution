@@ -17,7 +17,7 @@ s = s.replace("i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RES
 s = s.replace("BubbleSettings.isSemiIconVisible(this)", "false")
 s = s.replace('"OVAL"', '"SQUARE"')
 
-# The old source calls the second shape button 'oval'; rename that variable and all of its references to 'square'.
+# Rename the second shape selector from the old OVAL name to SQUARE.
 s = s.replace('TextView oval=label("SQUARE"', 'TextView square=label("SQUARE"')
 s = s.replace('oval.setGravity(', 'square.setGravity(')
 s = s.replace('oval.setBackground(', 'square.setBackground(')
@@ -30,7 +30,15 @@ if old_size not in s:
     raise SystemExit("bubble size marker not found")
 s = s.replace(old_size, new_size, 1)
 s = s.replace('bubble.setText("i");', 'bubble.setText(squareMode?"":"i");', 1)
-s = s.replace('bg.setShape(GradientDrawable.OVAL);bg.setStroke', 'bg.setShape(squareMode?GradientDrawable.RECTANGLE:GradientDrawable.OVAL);if(squareMode)bg.setCornerRadius(dp(16));bg.setStroke', 1)
+s = s.replace('bg.setShape(GradientDrawable.OVAL);bg.setStroke', 'bg.setShape(squareMode?GradientDrawable.RECTANGLE:GradientDrawable.OVAL);if(squareMode)bg.setCornerRadius(dp(18));bg.setStroke', 1)
+
+# Add a single visual-refresh helper so shape and transparency changes immediately affect the live bubble.
+helper = ''' private void applyBubbleVisual(){if(!(bubbleView instanceof TextView))return;boolean square="SQUARE".equals(BubbleSettings.getShape(this));TextView bubble=(TextView)bubbleView;bubble.setText(square?"":"i");GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});if(square){bg.setShape(GradientDrawable.RECTANGLE);bg.setCornerRadius(dp(18));}else{bg.setShape(GradientDrawable.OVAL);}bg.setStroke(dp(2),Color.argb(80,255,255,255));bubble.setBackground(bg);bubble.setAlpha(BubbleSettings.getTransparency(this)/100f);}\n'''
+if 'private void applyBubbleVisual()' not in s:
+    marker = ' private void applyBubbleSettings()'
+    if marker not in s:
+        raise SystemExit("applyBubbleSettings marker not found")
+    s = s.replace(marker, helper + marker, 1)
 
 # Replace the refresh lambda by structure rather than an exact generated line.
 new_refresh = 'Runnable refresh=()->{boolean sq="SQUARE".equals(BubbleSettings.getShape(this));sb.setVisibility(sq?View.GONE:View.VISIBLE);sv.setVisibility(sq?View.GONE:View.VISIBLE);wv.setVisibility(sq?View.VISIBLE:View.GONE);wb.setVisibility(sq?View.VISIBLE:View.GONE);hv.setVisibility(sq?View.VISIBLE:View.GONE);hb.setVisibility(sq?View.VISIBLE:View.GONE);circle.setBackground(round(sq?Color.rgb(38,46,66):primary,12));square.setBackground(round(sq?primary:Color.rgb(38,46,66),12));};'
@@ -39,12 +47,19 @@ s, refresh_count = re.subn(refresh_pattern, new_refresh, s, count=1, flags=re.DO
 if refresh_count != 1:
     raise SystemExit("settings refresh marker not found")
 
-# Replace the shape click handlers structurally; formatting/spacing changes should not break CI.
-new_clicks = 'circle.setOnClickListener(v->{BubbleSettings.setShape(this,"CIRCLE");applyBubbleSettings();refresh.run();});square.setOnClickListener(v->{BubbleSettings.setShape(this,"SQUARE");BubbleSettings.setWidth(this,BubbleSettings.getSize(this));BubbleSettings.setHeight(this,BubbleSettings.getSize(this));applyBubbleSettings();refresh.run();});'
+# Replace shape click handlers structurally and refresh the actual bubble immediately.
+new_clicks = 'circle.setOnClickListener(v->{BubbleSettings.setShape(this,"CIRCLE");int n=BubbleSettings.getWidth(this);BubbleSettings.setSize(this,n);applyBubbleVisual();applyBubbleSettings();refresh.run();});square.setOnClickListener(v->{BubbleSettings.setShape(this,"SQUARE");BubbleSettings.setWidth(this,BubbleSettings.getSize(this));BubbleSettings.setHeight(this,BubbleSettings.getSize(this));applyBubbleVisual();applyBubbleSettings();refresh.run();});'
 click_pattern = r'circle\.setOnClickListener\(v->\{.*?\}\);\s*square\.setOnClickListener\(v->\{.*?\}\);'
 s, click_count = re.subn(click_pattern, new_clicks, s, count=1, flags=re.DOTALL)
 if click_count != 1:
     raise SystemExit("settings click marker not found")
+
+# Make transparency seekbar update the live bubble, not only SharedPreferences.
+transparency_listener = 'ab.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=20+p;av.setText("Transparency: "+n+"%");BubbleSettings.setTransparency(FloatingService.this,n);applyBubbleVisual();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});'
+ab_pattern = r'ab\.setOnSeekBarChangeListener\(new SeekBar\.OnSeekBarChangeListener\(\)\{.*?\}\);'
+s, ab_count = re.subn(ab_pattern, transparency_listener, s, count=1, flags=re.DOTALL)
+if ab_count != 1:
+    raise SystemExit("transparency listener marker not found")
 
 s = s.replace('boolean ovalMode=BubbleSettings.getShape(this).equals("SQUARE");', 'boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));', 1)
 s = s.replace('int widthDp=ovalMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=ovalMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);', 'int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);', 1)
@@ -54,4 +69,4 @@ bt = sp.read_text(encoding="utf-8")
 bt = bt.replace('"OVAL".equals(shape) ? "OVAL" : "CIRCLE"', '"SQUARE".equals(shape) ? "SQUARE" : "CIRCLE"')
 sp.write_text(bt, encoding="utf-8")
 p.write_text(s, encoding="utf-8")
-print("Prepared Circle/Square bubble implementation")
+print("Prepared Circle/Square bubble implementation with live transparency")
