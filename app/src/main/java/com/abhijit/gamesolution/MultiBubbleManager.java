@@ -103,11 +103,10 @@ public final class MultiBubbleManager {
     }
 
     private void updateRecentApp() {
-        // Use the latest stable foreground app instead of "previous package".
-        // During Android's share sheet the resolver becomes foreground temporarily;
-        // ForegroundAppResolver filters that transient package out, so the app that
-        // opened Share remains the Recent App Bubble target after the dialog closes.
-        String pkg = ForegroundAppResolver.getCurrentPackage(context, context.getPackageName());
+        // Recent means the app used immediately before the current app.
+        // The resolver itself ignores the transient Android share/chooser package,
+        // so opening/closing Share does not replace the real recent app.
+        String pkg = ForegroundAppResolver.getPreviousPackage(context, context.getPackageName());
         if (pkg == null || pkg.equals(context.getPackageName())) return;
         if (pkg.equals(lastRecentPackage) && recentBubble != null) {
             applyRecentTransparency();
@@ -254,13 +253,13 @@ public final class MultiBubbleManager {
     private void snapToEdge(View view,WindowManager.LayoutParams p,boolean activity){int sw=context.getResources().getDisplayMetrics().widthPixels,w=view.getWidth()>0?view.getWidth():p.width,target=p.x+w/2<sw/2?0:Math.max(0,sw-w),from=p.x;android.animation.ValueAnimator a=android.animation.ValueAnimator.ofInt(from,target);a.setDuration(220).setInterpolator(new DecelerateInterpolator());a.addUpdateListener(v->{p.x=(Integer)v.getAnimatedValue();try{windowManager.updateViewLayout(view,p);}catch(Exception ignored){}});a.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){savePosition(activity,p);}});a.start();}
     private ImageView createIconBubble(String pkg){ImageView v=new ImageView(context);try{ApplicationInfo i=context.getPackageManager().getApplicationInfo(pkg,0);Drawable d=context.getPackageManager().getApplicationIcon(i);v.setImageDrawable(d);}catch(Exception ignored){}v.setPadding(0,0,0,0);v.setBackground(null);v.setElevation(14f);v.setScaleType(ImageView.ScaleType.CENTER_INSIDE);return v;}
     private TextView createTextBubble(String packageName,String activityName){TextView v=new TextView(context);v.setText(packageName+" / "+activityName);v.setTextColor(Color.WHITE);v.setTextSize(11);v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);v.setGravity(Gravity.CENTER);v.setSingleLine(true);v.setPadding(dp(12),0,dp(12),0);v.setBackground(round(Color.rgb(72,91,205),14));v.setElevation(14f);return v;}
-    private GradientDrawable round(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
+    private void bringAppToFront(String packageName){try{Intent launch=context.getPackageManager().getLaunchIntentForPackage(packageName);if(launch==null)return;launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);context.startActivity(launch);}catch(Exception ignored){}}
     private int overlayType(){return Build.VERSION.SDK_INT>=Build.VERSION_CODES.O?WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY:WindowManager.LayoutParams.TYPE_PHONE;}
-    private boolean isLauncher(String pkg){try{Intent i=new Intent(Intent.ACTION_MAIN);i.addCategory(Intent.CATEGORY_HOME);android.content.pm.ResolveInfo r=context.getPackageManager().resolveActivity(i,android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);return r!=null&&r.activityInfo!=null&&pkg.equals(r.activityInfo.packageName);}catch(Exception e){return false;}}
-    private void bringAppToFront(String packageName){try{Intent i=context.getPackageManager().getLaunchIntentForPackage(packageName);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);context.startActivity(i);}}catch(Exception ignored){}}
-    private void removeView(View v){try{if(v.getWindowToken()!=null)windowManager.removeView(v);}catch(Exception ignored){}}
-    private void vibrate(long ms){try{if(Build.VERSION.SDK_INT>=31){VibratorManager vm=(VibratorManager)context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);if(vm!=null)vm.getDefaultVibrator().vibrate(VibrationEffect.createOneShot(ms,VibrationEffect.DEFAULT_AMPLITUDE));}else{Vibrator v=(Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);if(v!=null)v.vibrate(VibrationEffect.createOneShot(ms,VibrationEffect.DEFAULT_AMPLITUDE));}}catch(Exception ignored){}}
+    private boolean isLauncher(String packageName){try{Intent intent=new Intent(Intent.ACTION_MAIN);intent.addCategory(Intent.CATEGORY_HOME);android.content.pm.ResolveInfo info=context.getPackageManager().resolveActivity(intent,android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);return info!=null&&info.activityInfo!=null&&packageName.equals(info.activityInfo.packageName);}catch(Exception ignored){return false;}}
+    private GradientDrawable round(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private int dp(int v){return Math.round(v*context.getResources().getDisplayMetrics().density);}
     private int clamp(int v,int min,int max){return Math.max(min,Math.min(max,v));}
+    private void vibrate(long ms){try{Vibrator vibrator;if(Build.VERSION.SDK_INT>=31){VibratorManager vm=(VibratorManager)context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);vibrator=vm==null?null:vm.getDefaultVibrator();}else vibrator=(Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);if(vibrator!=null&&vibrator.hasVibrator()){if(Build.VERSION.SDK_INT>=26)vibrator.vibrate(VibrationEffect.createOneShot(ms,VibrationEffect.DEFAULT_AMPLITUDE));else vibrator.vibrate(ms);}}catch(Exception ignored){}}
+    private void removeView(View view){try{windowManager.removeView(view);}catch(Exception ignored){}}
     private static final class ForegroundActivity{final String packageName,activityName;ForegroundActivity(String p,String a){packageName=p;activityName=a;}}
 }
