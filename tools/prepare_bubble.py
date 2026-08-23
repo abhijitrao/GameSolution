@@ -60,7 +60,8 @@ s = s.replace('int widthDp=ovalMode?BubbleSettings.getWidth(this):BubbleSettings
 secondary = '''\nmb = new MultiBubbleManager(this, windowManager);\nif (BubbleSettings.isRecentAppBubbleEnabled(this)) { String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName()); if(rp!=null) mb.showRecentApp(rp); }\nLiveMonitorDialog.setActivitySwitchCallback((pkg,activity)->{ if(BubbleSettings.isActivitySwitchBubbleEnabled(this) && mb!=null) mb.showActivity(pkg,activity); });\n'''
 s = s.replace('windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);', 'windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);' + secondary, 1)
 s = s.replace('private WindowManager windowManager;private View bubbleView', 'private WindowManager windowManager;private MultiBubbleManager mb;private View bubbleView', 1)
-s = s.replace('private void openMenu(int bx,int by,int size){removeMenu();', 'private void openMenu(int bx,int by,int size){if(BubbleSettings.isRecentAppBubbleEnabled(this)&&mb!=null){String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName());if(rp!=null)mb.showRecentApp(rp);}else if(mb!=null)mb.removeRecentBubble();removeMenu();', 1)
+# Main-bubble clicks must not recreate or replace the independent recent-app bubble.
+s = s.replace('private void openMenu(int bx,int by,int size){if(BubbleSettings.isRecentAppBubbleEnabled(this)&&mb!=null){String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName());if(rp!=null)mb.showRecentApp(rp);}else if(mb!=null)mb.removeRecentBubble();removeMenu();', 'private void openMenu(int bx,int by,int size){removeMenu();', 1)
 s = s.replace('@Override public IBinder onBind(Intent intent){return null;}', '@Override public IBinder onBind(Intent intent){return null;}\n @Override public void onDestroy(){if(mb!=null)mb.removeAllSecondaryBubbles();LiveMonitorDialog.setActivitySwitchCallback(null);super.onDestroy();}', 1)
 
 sp = ROOT / "BubbleSettings.java"
@@ -79,9 +80,6 @@ if 'SWITCH BUBBLE' not in ls:
     if old not in ls: raise SystemExit("Live Monitor footer marker not found")
     ls = ls.replace(old, new, 1)
 
-# The activity detector already runs every second. When it observes a new activity,
-# automatically refresh the optional activity-switch bubble so the bubble represents
-# the current tracked activity instead of waiting for a second UI event.
 activity_marker = '''            lastActivity = snapshot.activity;\n            lastActivityTimestamp = snapshot.timestamp;'''
 activity_replacement = '''            boolean activityChanged = !snapshot.activity.equals(lastActivity);\n            lastActivity = snapshot.activity;\n            lastActivityTimestamp = snapshot.timestamp;\n            if (activityChanged && activitySwitchCallback != null) {\n                activitySwitchCallback.onSwitch(pkg, snapshot.activity);\n            }'''
 if activity_marker in ls and 'boolean activityChanged = !snapshot.activity.equals(lastActivity);' not in ls:
