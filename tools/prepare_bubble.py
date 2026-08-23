@@ -13,6 +13,10 @@ s = s.replace("if(++count>=5)break;", "if(++count>=4)break;")
 s = s.replace("i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);", "i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);")
 s = s.replace("BubbleSettings.isSemiIconVisible(this)", "false")
 s = s.replace('"OVAL"', '"SQUARE"')
+s = s.replace('TextView oval=label("SQUARE"', 'TextView square=label("SQUARE"')
+s = s.replace('shapeRow.addView(oval,olp)', 'shapeRow.addView(square,olp)')
+s = s.replace('oval.setGravity(Gravity.CENTER)', 'square.setGravity(Gravity.CENTER)')
+s = s.replace('oval.setBackground(round(Color.rgb(38,46,66),12))', 'square.setBackground(round(Color.rgb(38,46,66),12))')
 
 old_size = '''  int widthDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);\n  int heightDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);'''
 new_size = '''  boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));\n  int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);\n  int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);'''
@@ -22,7 +26,7 @@ s = s.replace(old_size, new_size, 1)
 s = s.replace('bubble.setText("i");', 'bubble.setText(squareMode?"":"i");', 1)
 s = s.replace('bg.setShape(GradientDrawable.OVAL);bg.setStroke', 'bg.setShape(squareMode?GradientDrawable.RECTANGLE:GradientDrawable.OVAL);if(squareMode)bg.setCornerRadius(dp(16));bg.setStroke', 1)
 
-old_refresh = 'Runnable refresh=()->{boolean ovalMode=BubbleSettings.getShape(this).equals("SQUARE");sb.setVisibility(ovalMode?View.GONE:View.VISIBLE);sv.setVisibility(ovalMode?View.GONE:View.VISIBLE);wv.setVisibility(ovalMode?View.VISIBLE:View.GONE);wb.setVisibility(ovalMode?View.VISIBLE:View.GONE);hv.setVisibility(ovalMode?View.VISIBLE:View.GONE);hb.setVisibility(ovalMode?View.VISIBLE:View.GONE);circle.setBackground(round(ovalMode?Color.rgb(38,46,66):primary,12));oval.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));};'
+old_refresh = 'Runnable refresh=()->{boolean ovalMode=BubbleSettings.getShape(this).equals("SQUARE");sb.setVisibility(ovalMode?View.GONE:View.VISIBLE);sv.setVisibility(ovalMode?View.GONE:View.VISIBLE);wv.setVisibility(ovalMode?View.VISIBLE:View.GONE);wb.setVisibility(ovalMode?View.VISIBLE:View.GONE);hv.setVisibility(ovalMode?View.VISIBLE:View.GONE);hb.setVisibility(ovalMode?View.VISIBLE:View.GONE);circle.setBackground(round(ovalMode?Color.rgb(38,46,66):primary,12));square.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));};'
 new_refresh = 'Runnable refresh=()->{boolean sq="SQUARE".equals(BubbleSettings.getShape(this));sb.setVisibility(sq?View.GONE:View.VISIBLE);sv.setVisibility(sq?View.GONE:View.VISIBLE);wv.setVisibility(sq?View.VISIBLE:View.GONE);wb.setVisibility(sq?View.VISIBLE:View.GONE);hv.setVisibility(sq?View.VISIBLE:View.GONE);hb.setVisibility(sq?View.VISIBLE:View.GONE);circle.setBackground(round(sq?Color.rgb(38,46,66):primary,12));square.setBackground(round(sq?primary:Color.rgb(38,46,66),12));};'
 if old_refresh not in s:
     raise SystemExit("settings refresh marker not found")
