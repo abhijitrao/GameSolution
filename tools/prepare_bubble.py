@@ -17,6 +17,11 @@ s = s.replace("i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RES
 s = s.replace("BubbleSettings.isSemiIconVisible(this)", "false")
 s = s.replace('"OVAL"', '"SQUARE"')
 
+# Rename the old settings button variable to match the new Square label.
+s = s.replace("TextView oval=label(\"SQUARE\"", "TextView square=label(\"SQUARE\"")
+s = s.replace("shapeRow.addView(oval,", "shapeRow.addView(square,")
+s = s.replace("square.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));", "square.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));")
+
 old_size = '''  int widthDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);\n  int heightDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);'''
 new_size = '''  boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));\n  int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);\n  int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);'''
 if old_size not in s:
