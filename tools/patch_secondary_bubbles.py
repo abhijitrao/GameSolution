@@ -22,5 +22,13 @@ if "void restartSecondaryBubbleService()" not in s:
     helper = ''' private void restartSecondaryBubbleService(){try{Intent i=new Intent(this,SecondaryBubbleService.class);if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O)startForegroundService(i);else startService(i);}catch(Exception ignored){}}\n'''
     s = s.replace(marker, helper + marker, 1)
 
+# The main bubble dialog must represent the actual current eligible foreground app.
+# The Recent App row separately excludes targetPackage, so it will show the previous apps.
+s = s.replace(
+    'targetPackage=ForegroundAppResolver.getPreviousPackage(this,getPackageName());',
+    'targetPackage=ForegroundAppResolver.getCurrentPackage(this,getPackageName());',
+    1
+)
+
 p.write_text(s, encoding="utf-8")
 print("Secondary bubble settings patched into generated FloatingService")
