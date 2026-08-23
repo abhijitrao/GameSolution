@@ -21,6 +21,7 @@ s = s.replace('"OVAL"', '"SQUARE"')
 s = s.replace('TextView oval=label("SQUARE"', 'TextView square=label("SQUARE"')
 s = s.replace('oval.setGravity(', 'square.setGravity(')
 s = s.replace('oval.setBackground(', 'square.setBackground(')
+s = s.replace('oval.setOnClickListener(', 'square.setOnClickListener(')
 s = s.replace('shapeRow.addView(oval,', 'shapeRow.addView(square,')
 
 old_size = '''  int widthDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);\n  int heightDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);'''
