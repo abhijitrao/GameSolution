@@ -9,110 +9,35 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/** Secondary switch bubbles. The existing main bubble is intentionally not owned here. */
 public final class MultiBubbleManager {
     public static final int MAX_ACTIVITY_BUBBLES = 3;
-    private final Context context;
-    private final WindowManager windowManager;
-    private final List<View> activityBubbles = new ArrayList<>();
-    private View recentBubble;
-
-    public MultiBubbleManager(Context context, WindowManager windowManager) {
-        this.context = context.getApplicationContext();
-        this.windowManager = windowManager;
+    private final Context context; private final WindowManager windowManager;
+    private final List<View> activityBubbles = new ArrayList<>(); private View recentBubble;
+    public MultiBubbleManager(Context context, WindowManager windowManager) { this.context=context.getApplicationContext(); this.windowManager=windowManager; }
+    public void removeAllSecondaryBubbles(){ removeRecentBubble(); for(View v:new ArrayList<>(activityBubbles))removeView(v); activityBubbles.clear(); }
+    public void removeRecentBubble(){ if(recentBubble!=null){removeView(recentBubble);recentBubble=null;} }
+    public void showRecentApp(String pkg){ if(pkg==null||pkg.equals(context.getPackageName()))return; removeRecentBubble(); ImageView b=createIconBubble(pkg); addBubble(b,pkg,52,150); recentBubble=b; }
+    public void showActivity(String pkg,String activity){ if(pkg==null||activity==null||activity.isEmpty())return; if(activityBubbles.size()>=MAX_ACTIVITY_BUBBLES)removeView(activityBubbles.remove(0)); TextView b=createTextBubble(shortActivityName(activity)); int i=activityBubbles.size(); addBubble(b,pkg,52,230+i*64); activityBubbles.add(b); }
+    private void addBubble(View view,String pkg,int xDp,int yDp){
+        final WindowManager.LayoutParams p=new WindowManager.LayoutParams(dp(52),dp(52),overlayType(),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,PixelFormat.TRANSLUCENT); p.gravity=Gravity.TOP|Gravity.START;p.x=dp(xDp);p.y=dp(yDp);
+        final int sw=context.getResources().getDisplayMetrics().widthPixels, sh=context.getResources().getDisplayMetrics().heightPixels;
+        view.setClickable(true); view.setOnTouchListener(new View.OnTouchListener(){float downX,downY;int startX,startY;boolean moved; public boolean onTouch(View v,MotionEvent e){switch(e.getActionMasked()){case MotionEvent.ACTION_DOWN:downX=e.getRawX();downY=e.getRawY();startX=p.x;startY=p.y;moved=false;return true;case MotionEvent.ACTION_MOVE:float dx=e.getRawX()-downX,dy=e.getRawY()-downY;if(Math.abs(dx)>dp(6)||Math.abs(dy)>dp(6))moved=true;if(moved){p.x=Math.max(0,Math.min(sw-p.width,startX+(int)dx));p.y=Math.max(dp(48),Math.min(sh-p.height-dp(8),startY+(int)dy));try{windowManager.updateViewLayout(v,p);}catch(Exception ignored){}}return true;case MotionEvent.ACTION_UP:if(!moved)bringAppToFront(pkg);return true;case MotionEvent.ACTION_CANCEL:return true;default:return true;}}});
+        try{windowManager.addView(view,p);}catch(Exception ignored){}
     }
-
-    public void removeAllSecondaryBubbles() {
-        removeRecentBubble();
-        for (View view : new ArrayList<>(activityBubbles)) removeView(view);
-        activityBubbles.clear();
-    }
-
-    public void removeRecentBubble() {
-        if (recentBubble != null) { removeView(recentBubble); recentBubble = null; }
-    }
-
-    /** Shows the real launcher icon of the selected/recent app. */
-    public void showRecentApp(String packageName) {
-        if (packageName == null || packageName.equals(context.getPackageName())) return;
-        removeRecentBubble();
-        ImageView bubble = createIconBubble(packageName);
-        bubble.setOnClickListener(v -> bringAppToFront(packageName));
-        recentBubble = bubble;
-        addView(bubble, 52, 150);
-    }
-
-    /** Adds a text bubble for the current activity. At most three are retained. */
-    public void showActivity(String packageName, String activityName) {
-        if (packageName == null || activityName == null || activityName.isEmpty()) return;
-        if (activityBubbles.size() >= MAX_ACTIVITY_BUBBLES) removeView(activityBubbles.remove(0));
-        TextView bubble = createTextBubble(shortActivityName(activityName));
-        bubble.setOnClickListener(v -> bringAppToFront(packageName));
-        activityBubbles.add(bubble);
-        int index = activityBubbles.size() - 1;
-        addView(bubble, 52, 230 + index * 64);
-    }
-
-    private ImageView createIconBubble(String packageName) {
-        ImageView view = new ImageView(context);
-        try {
-            ApplicationInfo info = context.getPackageManager().getApplicationInfo(packageName, 0);
-            Drawable icon = context.getPackageManager().getApplicationIcon(info);
-            view.setImageDrawable(icon);
-        } catch (Exception ignored) { view.setImageDrawable(null); }
-        view.setPadding(dp(7), dp(7), dp(7), dp(7));
-        view.setBackground(round(Color.rgb(72, 91, 205), 26));
-        view.setElevation(14f);
-        return view;
-    }
-
-    private TextView createTextBubble(String label) {
-        TextView view = new TextView(context);
-        view.setText(label);
-        view.setTextColor(Color.WHITE);
-        view.setTextSize(10);
-        view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        view.setGravity(Gravity.CENTER);
-        view.setPadding(dp(4), dp(4), dp(4), dp(4));
-        view.setBackground(round(Color.rgb(72, 91, 205), 26));
-        view.setElevation(14f);
-        return view;
-    }
-
-    private void addView(View view, int xDp, int yDp) {
-        WindowManager.LayoutParams p = new WindowManager.LayoutParams(
-                dp(52), dp(52), overlayType(), WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.TRANSLUCENT);
-        p.gravity = Gravity.TOP | Gravity.START;
-        p.x = dp(xDp); p.y = dp(yDp);
-        try { windowManager.addView(view, p); } catch (Exception ignored) {}
-    }
-
-    private void removeView(View view) { try { windowManager.removeView(view); } catch (Exception ignored) {} }
-
-    private void bringAppToFront(String packageName) {
-        try {
-            Intent intent = context.getPackageManager().getLaunchIntentForPackage(packageName);
-            if (intent == null) return;
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-            context.startActivity(intent);
-        } catch (Exception ignored) {}
-    }
-
-    private String shortActivityName(String activity) {
-        int slash = activity.lastIndexOf('.');
-        return slash >= 0 && slash + 1 < activity.length() ? activity.substring(slash + 1) : activity;
-    }
-
-    private GradientDrawable round(int color, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(radius)); return d; }
-    private int overlayType() { return android.os.Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE; }
-    private int dp(int value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }
+    private ImageView createIconBubble(String pkg){ImageView v=new ImageView(context);try{ApplicationInfo i=context.getPackageManager().getApplicationInfo(pkg,0);Drawable d=context.getPackageManager().getApplicationIcon(i);v.setImageDrawable(d);}catch(Exception ignored){}v.setPadding(dp(7),dp(7),dp(7),dp(7));v.setBackground(round(Color.rgb(72,91,205),26));v.setElevation(14f);return v;}
+    private TextView createTextBubble(String label){TextView v=new TextView(context);v.setText(label);v.setTextColor(Color.WHITE);v.setTextSize(10);v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);v.setGravity(Gravity.CENTER);v.setPadding(dp(4),dp(4),dp(4),dp(4));v.setBackground(round(Color.rgb(72,91,205),26));v.setElevation(14f);return v;}
+    private void removeView(View v){try{windowManager.removeView(v);}catch(Exception ignored){}}
+    private void bringAppToFront(String pkg){try{Intent i=context.getPackageManager().getLaunchIntentForPackage(pkg);if(i==null)return;i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);context.startActivity(i);}catch(Exception ignored){}}
+    private String shortActivityName(String a){int p=a.lastIndexOf('.');return p>=0&&p+1<a.length()?a.substring(p+1):a;}
+    private GradientDrawable round(int c,int r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(dp(r));return d;}
+    private int overlayType(){return android.os.Build.VERSION.SDK_INT>=26?WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY:WindowManager.LayoutParams.TYPE_PHONE;}
+    private int dp(int v){return Math.round(v*context.getResources().getDisplayMetrics().density);}
 }
