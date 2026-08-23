@@ -56,11 +56,24 @@ s = s.replace('private void animateDeleteAndStop(View bubble){hideDeleteZone();'
 s = s.replace('boolean ovalMode=BubbleSettings.getShape(this).equals("SQUARE");', 'boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));', 1)
 s = s.replace('int widthDp=ovalMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=ovalMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);', 'int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);', 1)
 
+# Main-bubble recent-app row: exclude GameSolution, the currently displayed target app,
+# and every package that can act as a HOME launcher. Keep remaining apps ordered by
+# last usage and retain the existing four-icon limit/click behavior.
+launcher_helper = ''' private boolean isLauncherPackage(String packageName){if(packageName==null)return false;try{Intent home=new Intent(Intent.ACTION_MAIN);home.addCategory(Intent.CATEGORY_HOME);java.util.List<android.content.pm.ResolveInfo> homes=getPackageManager().queryIntentActivities(home,android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);if(homes!=null)for(android.content.pm.ResolveInfo info:homes){if(info.activityInfo!=null&&packageName.equals(info.activityInfo.packageName))return true;}}catch(Exception ignored){}return false;}\n'''
+if 'private boolean isLauncherPackage(' not in s:
+    marker = ' private LinearLayout buildRecentAppsRow()'
+    if marker not in s: raise SystemExit("recent apps marker not found")
+    s = s.replace(marker, launcher_helper + marker, 1)
+
+old_recent = ''' private LinearLayout buildRecentAppsRow(){LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(0,0,0,0);row.setBackground(round(card,15));int count=0;try{android.app.usage.UsageStatsManager usm=(android.app.usage.UsageStatsManager)getSystemService(Context.USAGE_STATS_SERVICE);long now=System.currentTimeMillis();java.util.List<android.app.usage.UsageStats> stats=usm==null?null:usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY,now-86400000L,now);if(stats!=null){java.util.Collections.sort(stats,(a,b)->Long.compare(b.getLastTimeUsed(),a.getLastTimeUsed()));java.util.HashSet<String> added=new java.util.HashSet<>();for(android.app.usage.UsageStats s:stats){String p=s.getPackageName();if(p==null||p.equals(getPackageName())||p.equals(targetPackage)||!added.add(p))continue;Intent launch=getPackageManager().getLaunchIntentForPackage(p);if(launch==null)continue;TextView icon=label("",1,text,Typeface.NORMAL);icon.setGravity(Gravity.CENTER);try{android.graphics.drawable.Drawable d=getPackageManager().getApplicationIcon(p);d.setBounds(0,0,dp(54),dp(54));icon.setCompoundDrawables(null,d,null,null);}catch(Exception ignored){continue;}icon.setContentDescription(getAppLabel(p));final String pkgName=p;icon.setOnClickListener(v->{vibrate(20);removeMenu();try{Intent i=getPackageManager().getLaunchIntentForPackage(pkgName);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);startActivity(i);}}catch(Exception ignored){}});row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));}}}catch(SecurityException ignored){}catch(Exception ignored){}if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));return row;}'''
+new_recent = ''' private LinearLayout buildRecentAppsRow(){LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(0,0,0,0);row.setBackground(round(card,15));int count=0;try{android.app.usage.UsageStatsManager usm=(android.app.usage.UsageStatsManager)getSystemService(Context.USAGE_STATS_SERVICE);long now=System.currentTimeMillis();java.util.List<android.app.usage.UsageStats> stats=usm==null?null:usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY,now-86400000L,now);if(stats!=null){java.util.Collections.sort(stats,(a,b)->Long.compare(b.getLastTimeUsed(),a.getLastTimeUsed()));java.util.HashSet<String> added=new java.util.HashSet<>();for(android.app.usage.UsageStats usage:stats){String p=usage.getPackageName();if(p==null||p.equals(getPackageName())||p.equals(targetPackage)||isLauncherPackage(p)||!added.add(p))continue;Intent launch=getPackageManager().getLaunchIntentForPackage(p);if(launch==null)continue;TextView icon=label("",1,text,Typeface.NORMAL);icon.setGravity(Gravity.CENTER);try{android.graphics.drawable.Drawable d=getPackageManager().getApplicationIcon(p);d.setBounds(0,0,dp(54),dp(54));icon.setCompoundDrawables(null,d,null,null);}catch(Exception ignored){continue;}icon.setContentDescription(getAppLabel(p));final String pkgName=p;icon.setOnClickListener(v->{vibrate(20);removeMenu();try{Intent i=getPackageManager().getLaunchIntentForPackage(pkgName);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);startActivity(i);}}catch(Exception ignored){}});row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;TextView spacer=label("",1,text,Typeface.NORMAL);row.addView(spacer,new LinearLayout.LayoutParams(0,dp(54),1));}}}catch(SecurityException ignored){}catch(Exception ignored){}if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));return row;}'''
+if old_recent not in s: raise SystemExit("recent apps implementation not found")
+s = s.replace(old_recent, new_recent, 1)
+
 # Secondary bubbles are owned by the service but rendered independently of the main bubble.
 secondary = '''\nmb = new MultiBubbleManager(this, windowManager);\nif (BubbleSettings.isRecentAppBubbleEnabled(this)) { String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName()); if(rp!=null) mb.showRecentApp(rp); }\nLiveMonitorDialog.setActivitySwitchCallback((pkg,activity)->{ if(BubbleSettings.isActivitySwitchBubbleEnabled(this) && mb!=null) mb.showActivity(pkg,activity); });\n'''
 s = s.replace('windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);', 'windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);' + secondary, 1)
 s = s.replace('private WindowManager windowManager;private View bubbleView', 'private WindowManager windowManager;private MultiBubbleManager mb;private View bubbleView', 1)
-# Main-bubble clicks must not recreate or replace the independent recent-app bubble.
 s = s.replace('private void openMenu(int bx,int by,int size){if(BubbleSettings.isRecentAppBubbleEnabled(this)&&mb!=null){String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName());if(rp!=null)mb.showRecentApp(rp);}else if(mb!=null)mb.removeRecentBubble();removeMenu();', 'private void openMenu(int bx,int by,int size){removeMenu();', 1)
 s = s.replace('@Override public IBinder onBind(Intent intent){return null;}', '@Override public IBinder onBind(Intent intent){return null;}\n @Override public void onDestroy(){if(mb!=null)mb.removeAllSecondaryBubbles();LiveMonitorDialog.setActivitySwitchCallback(null);super.onDestroy();}', 1)
 
@@ -69,7 +82,6 @@ bt = sp.read_text(encoding="utf-8")
 bt = bt.replace('"OVAL".equals(shape) ? "OVAL" : "CIRCLE"', '"SQUARE".equals(shape) ? "SQUARE" : "CIRCLE"')
 sp.write_text(bt, encoding="utf-8")
 
-# Add the Activity Switch callback/button to Live Monitor.
 lp = ROOT / "LiveMonitorDialog.java"
 ls = lp.read_text(encoding="utf-8")
 if 'ActivitySwitchCallback' not in ls:
@@ -88,9 +100,6 @@ if activity_marker in ls and 'boolean activityChanged = !snapshot.activity.equal
 lp.write_text(ls, encoding="utf-8")
 p.write_text(s, encoding="utf-8")
 
-# Keep the checked-in secondary bubble source compilable as well. The CI job runs
-# this preparation step before tests, so fix the known missing parenthesis in-place
-# instead of relying on a manual edit of the generated source.
 mp = ROOT / "MultiBubbleManager.java"
 if mp.exists():
     ms = mp.read_text(encoding="utf-8")
