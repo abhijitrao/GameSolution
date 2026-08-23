@@ -10,6 +10,8 @@ public final class BubbleSettings {
     private static final String HEIGHT = "height";
     private static final String SHAPE = "shape";
     private static final String TRANSPARENCY = "transparency";
+    private static final String RECENT_TRANSPARENCY = "recent_transparency";
+    private static final String ACTIVITY_TRANSPARENCY = "activity_transparency";
     private static final String POS_X = "position_x_ratio";
     private static final String POS_Y = "position_y_ratio";
     private static final String SNAP = "snap_to_edge";
@@ -30,6 +32,10 @@ public final class BubbleSettings {
     public static int getTransparencyPercent(Context context) { return prefs(context).getInt(TRANSPARENCY, 100); }
     public static int getTransparency(Context context) { return getTransparencyPercent(context); }
     public static void setTransparency(Context context, int percent) { prefs(context).edit().putInt(TRANSPARENCY, Math.max(20, Math.min(100, percent))).apply(); }
+    public static int getRecentTransparency(Context context) { return prefs(context).getInt(RECENT_TRANSPARENCY, 100); }
+    public static void setRecentTransparency(Context context, int percent) { prefs(context).edit().putInt(RECENT_TRANSPARENCY, Math.max(20, Math.min(100, percent))).apply(); }
+    public static int getActivityTransparency(Context context) { return prefs(context).getInt(ACTIVITY_TRANSPARENCY, 100); }
+    public static void setActivityTransparency(Context context, int percent) { prefs(context).edit().putInt(ACTIVITY_TRANSPARENCY, Math.max(20, Math.min(100, percent))).apply(); }
     public static boolean hasPosition(Context context) { return prefs(context).contains(POS_X) && prefs(context).contains(POS_Y); }
     public static float getPositionX(Context context) { return prefs(context).getFloat(POS_X, 0.9f); }
     public static float getPositionY(Context context) { return prefs(context).getFloat(POS_Y, 0.25f); }
