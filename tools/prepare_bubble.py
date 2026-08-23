@@ -60,9 +60,7 @@ s = s.replace('int widthDp=ovalMode?BubbleSettings.getWidth(this):BubbleSettings
 secondary = '''\nmb = new MultiBubbleManager(this, windowManager);\nif (BubbleSettings.isRecentAppBubbleEnabled(this)) { String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName()); if(rp!=null) mb.showRecentApp(rp); }\nLiveMonitorDialog.setActivitySwitchCallback((pkg,activity)->{ if(BubbleSettings.isActivitySwitchBubbleEnabled(this) && mb!=null) mb.showActivity(pkg,activity); });\n'''
 s = s.replace('windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);', 'windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);' + secondary, 1)
 s = s.replace('private WindowManager windowManager;private View bubbleView', 'private WindowManager windowManager;private MultiBubbleManager mb;private View bubbleView', 1)
-# Toggle-aware recent bubble refresh when the service menu/settings is opened.
 s = s.replace('private void openMenu(int bx,int by,int size){removeMenu();', 'private void openMenu(int bx,int by,int size){if(BubbleSettings.isRecentAppBubbleEnabled(this)&&mb!=null){String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName());if(rp!=null)mb.showRecentApp(rp);}else if(mb!=null)mb.removeRecentBubble();removeMenu();', 1)
-# Clean secondary overlays with service shutdown.
 s = s.replace('@Override public IBinder onBind(Intent intent){return null;}', '@Override public IBinder onBind(Intent intent){return null;}\n @Override public void onDestroy(){if(mb!=null)mb.removeAllSecondaryBubbles();LiveMonitorDialog.setActivitySwitchCallback(null);super.onDestroy();}', 1)
 
 sp = ROOT / "BubbleSettings.java"
@@ -70,7 +68,7 @@ bt = sp.read_text(encoding="utf-8")
 bt = bt.replace('"OVAL".equals(shape) ? "OVAL" : "CIRCLE"', '"SQUARE".equals(shape) ? "SQUARE" : "CIRCLE"')
 sp.write_text(bt, encoding="utf-8")
 
-# Add the Activity Switch button to Live Monitor without changing its existing metrics.
+# Add the Activity Switch callback/button to Live Monitor.
 lp = ROOT / "LiveMonitorDialog.java"
 ls = lp.read_text(encoding="utf-8")
 if 'ActivitySwitchCallback' not in ls:
@@ -80,7 +78,15 @@ if 'SWITCH BUBBLE' not in ls:
     new = '''root.addView(footer);\n            TextView switchBubble = text(context, "SWITCH BUBBLE", 12, TEXT, Typeface.BOLD);\n            switchBubble.setGravity(Gravity.CENTER);\n            switchBubble.setBackground(round(context, PRIMARY, 14));\n            switchBubble.setPadding(0, dp(context, 10), 0, dp(context, 10));\n            switchBubble.setOnClickListener(v -> {\n                if (activitySwitchCallback != null && lastActivity != null && !"Not available".equals(lastActivity)) {\n                    activitySwitchCallback.onSwitch(packageName, lastActivity);\n                    switchBubble.setText("BUBBLE ADDED");\n                }\n            });\n            root.addView(switchBubble, margin(context, -1, dp(context, 44), 0, dp(context, 8), 0, 0));'''
     if old not in ls: raise SystemExit("Live Monitor footer marker not found")
     ls = ls.replace(old, new, 1)
-lp.write_text(ls, encoding="utf-8")
 
+# The activity detector already runs every second. When it observes a new activity,
+# automatically refresh the optional activity-switch bubble so the bubble represents
+# the current tracked activity instead of waiting for a second UI event.
+activity_marker = '''            lastActivity = snapshot.activity;\n            lastActivityTimestamp = snapshot.timestamp;'''
+activity_replacement = '''            boolean activityChanged = !snapshot.activity.equals(lastActivity);\n            lastActivity = snapshot.activity;\n            lastActivityTimestamp = snapshot.timestamp;\n            if (activityChanged && activitySwitchCallback != null) {\n                activitySwitchCallback.onSwitch(pkg, snapshot.activity);\n            }'''
+if activity_marker in ls and 'boolean activityChanged = !snapshot.activity.equals(lastActivity);' not in ls:
+    ls = ls.replace(activity_marker, activity_replacement, 1)
+
+lp.write_text(ls, encoding="utf-8")
 p.write_text(s, encoding="utf-8")
-print("Prepared bubble with secondary switch bubbles")
+print("Prepared bubble with stable secondary switch bubbles and automatic activity tracking")
