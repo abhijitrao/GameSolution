@@ -5,7 +5,6 @@ GOOD = "8afaa7704b9908063a2458772621703216fcc61d"
 ROOT = Path("app/src/main/java/com/abhijit/gamesolution")
 p = ROOT / "FloatingService.java"
 
-# Checkout uses shallow history, so explicitly fetch the known-good source commit.
 subprocess.check_call(["git", "fetch", "--no-tags", "origin", GOOD])
 s = subprocess.check_output(["git", "show", f"{GOOD}:app/src/main/java/com/abhijit/gamesolution/FloatingService.java"], text=True)
 
@@ -17,10 +16,9 @@ s = s.replace("i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RES
 s = s.replace("BubbleSettings.isSemiIconVisible(this)", "false")
 s = s.replace('"OVAL"', '"SQUARE"')
 
-# Rename the old settings button variable to match the new Square label.
+# The old source calls the second shape button 'oval'; rename that variable to 'square'.
 s = s.replace("TextView oval=label(\"SQUARE\"", "TextView square=label(\"SQUARE\"")
 s = s.replace("shapeRow.addView(oval,", "shapeRow.addView(square,")
-s = s.replace("square.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));", "square.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));")
 
 old_size = '''  int widthDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);\n  int heightDp=BubbleSettings.getShape(this).equals("SQUARE")?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);'''
 new_size = '''  boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));\n  int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);\n  int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);'''
