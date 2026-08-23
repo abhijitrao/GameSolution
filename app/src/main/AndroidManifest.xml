@@ -22,6 +22,7 @@
             </intent-filter>
         </receiver>
         <service android:name=".FloatingService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Floating overlay utility for app restart controls" /></service>
+        <service android:name=".SecondaryBubbleService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Independent secondary overlay bubbles for app switching and activity display" /></service>
         <provider android:name=".ApkShareProvider" android:authorities="${applicationId}.apkshare" android:exported="false" android:grantUriPermissions="true" />
     </application>
 </manifest>
