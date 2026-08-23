@@ -101,7 +101,7 @@ jobs:
           }'''
           s=replace_method(s,'private void showBubble()',show_bubble)
           clamp_method='''private int clampBubbleX(int x,int widthPx,int sw){return Math.max(0,Math.min(x,sw-widthPx));}'''
-          s=replace_method(s,'private int clampBubbleX(int x,int size,int sw)',clamp_method)
+          s=replace_method(s,'private void clampBubbleX(int x,int widthPx,int sw)',clamp_method)
           snap_method='''private void snapToEdge(WindowManager.LayoutParams p,int size,int sw){int w=p.width;int target=(p.x+w/2<sw/2)?0:sw-w;View b=bubbleView;final int from=p.x;android.animation.ValueAnimator a=android.animation.ValueAnimator.ofInt(from,target);a.setDuration(220);a.setInterpolator(new DecelerateInterpolator());a.addUpdateListener(v->{p.x=(Integer)v.getAnimatedValue();try{windowManager.updateViewLayout(b,p);}catch(Exception ignored){}});a.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){BubbleSettings.setPosition(FloatingService.this,p.x/(float)sw,p.y/(float)getResources().getDisplayMetrics().heightPixels);}});a.start();}'''
           s=replace_method(s,'private void snapToEdge(WindowManager.LayoutParams p,int size,int sw)',snap_method)
           settings_method='''private void showBubbleSettings(){
