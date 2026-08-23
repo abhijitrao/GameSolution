@@ -1,0 +1,56 @@
+name: Fix Bubble Shape
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "app/src/main/java/com/abhijit/gamesolution/FloatingService.java"
+      - "app/src/main/java/com/abhijit/gamesolution/BubbleSettings.java"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply Circle/Square implementation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java'),
+              Path('app/src/main/java/com/abhijit/gamesolution/BubbleSettings.java'),
+          ]
+          for p in files:
+              s = p.read_text(encoding='utf-8')
+              s = s.replace('OVAL', 'SQUARE').replace('oval', 'square')
+              p.write_text(s, encoding='utf-8')
+
+          p = Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java')
+          s = p.read_text(encoding='utf-8')
+          old = 'TextView bubble=new TextView(this);\n  bubble.setText("i");bubble.setTextColor(Color.WHITE);'
+          new = 'TextView bubble=new TextView(this);\n  boolean squareShape=BubbleSettings.getShape(this).equals("SQUARE");\n  bubble.setText(squareShape?"":"i");bubble.setTextColor(Color.WHITE);'
+          if old not in s:
+              raise SystemExit('bubble text marker not found')
+          s = s.replace(old, new, 1)
+
+          old = 'GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});bg.setShape(GradientDrawable.OVAL);bg.setStroke(dp(2),Color.argb(80,255,255,255));'
+          new = 'GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});if(squareShape){bg.setShape(GradientDrawable.RECTANGLE);bg.setCornerRadius(dp(18));}else{bg.setShape(GradientDrawable.OVAL);}bg.setStroke(dp(2),Color.argb(80,255,255,255));'
+          if old not in s:
+              raise SystemExit('bubble background marker not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit fixed source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java app/src/main/java/com/abhijit/gamesolution/BubbleSettings.java
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix bubble Circle and Rounded Square"
+          git push
