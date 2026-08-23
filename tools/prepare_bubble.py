@@ -64,7 +64,8 @@ s, ab_count = re.subn(ab_pattern, transparency_listener, s, count=1, flags=re.DO
 if ab_count != 1:
     raise SystemExit("transparency listener marker not found")
 
-# Explicit user removal disables reboot restoration; process death remains enabled.
+# Mark the bubble as enabled whenever the user/service creates it; explicit delete disables it.
+s = s.replace('bubbleView=bubble;windowManager.addView(bubbleView,params);', 'BubbleSettings.setBubbleEnabled(this,true);bubbleView=bubble;windowManager.addView(bubbleView,params);', 1)
 s = s.replace('private void animateDeleteAndStop(View bubble){hideDeleteZone();', 'private void animateDeleteAndStop(View bubble){BubbleSettings.setBubbleEnabled(this,false);hideDeleteZone();', 1)
 
 s = s.replace('boolean ovalMode=BubbleSettings.getShape(this).equals("SQUARE");', 'boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));', 1)
@@ -75,4 +76,4 @@ bt = sp.read_text(encoding="utf-8")
 bt = bt.replace('"OVAL".equals(shape) ? "OVAL" : "CIRCLE"', '"SQUARE".equals(shape) ? "SQUARE" : "CIRCLE"')
 sp.write_text(bt, encoding="utf-8")
 p.write_text(s, encoding="utf-8")
-print("Prepared Circle/Square bubble implementation with live transparency, edge-touch delete activation and reboot persistence")
+print("Prepared bubble with reboot persistence and existing UI behavior preserved")
