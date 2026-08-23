@@ -20,9 +20,9 @@ public final class BubbleSettings {
     public static int getSize(Context context) { return prefs(context).getInt(SIZE, 58); }
     public static void setSize(Context context, int size) { prefs(context).edit().putInt(SIZE, Math.max(5, Math.min(120, size))).apply(); }
     public static String getShape(Context context) { return prefs(context).getString(SHAPE, "CIRCLE"); }
-    public static void setShape(Context context, String shape) { prefs(context).edit().putString(SHAPE, "OVAL".equals(shape) ? "OVAL" : "CIRCLE").apply(); }
-    public static int getWidth(Context context) { return prefs(context).getInt(WIDTH, getSize(context)); }
-    public static int getHeight(Context context) { return prefs(context).getInt(HEIGHT, getSize(context)); }
+    public static void setShape(Context context, String shape) { prefs(context).edit().putString(SHAPE, "SQUARE".equals(shape) ? "SQUARE" : "CIRCLE").apply(); }
+    public static int getWidth(Context context) { return Math.max(5, prefs(context).getInt(WIDTH, getSize(context))); }
+    public static int getHeight(Context context) { return Math.max(5, prefs(context).getInt(HEIGHT, getSize(context))); }
     public static void setWidth(Context context, int width) { prefs(context).edit().putInt(WIDTH, Math.max(5, Math.min(120, width))).apply(); }
     public static void setHeight(Context context, int height) { prefs(context).edit().putInt(HEIGHT, Math.max(5, Math.min(120, height))).apply(); }
     public static int getTransparencyPercent(Context context) { return prefs(context).getInt(TRANSPARENCY, 100); }
