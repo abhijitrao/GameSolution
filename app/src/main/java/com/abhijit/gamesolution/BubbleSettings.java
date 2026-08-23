@@ -14,6 +14,7 @@ public final class BubbleSettings {
     private static final String POS_Y = "position_y_ratio";
     private static final String SNAP = "snap_to_edge";
     private static final String SEMI_VISIBLE = "semi_icon_visible";
+    private static final String BUBBLE_ENABLED = "bubble_enabled";
     private BubbleSettings() {}
 
     private static SharedPreferences prefs(Context context) { return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
@@ -28,7 +29,6 @@ public final class BubbleSettings {
     public static int getTransparencyPercent(Context context) { return prefs(context).getInt(TRANSPARENCY, 100); }
     public static int getTransparency(Context context) { return getTransparencyPercent(context); }
     public static void setTransparency(Context context, int percent) { prefs(context).edit().putInt(TRANSPARENCY, Math.max(20, Math.min(100, percent))).apply(); }
-
     public static boolean hasPosition(Context context) { return prefs(context).contains(POS_X) && prefs(context).contains(POS_Y); }
     public static float getPositionX(Context context) { return prefs(context).getFloat(POS_X, 0.9f); }
     public static float getPositionY(Context context) { return prefs(context).getFloat(POS_Y, 0.25f); }
@@ -37,4 +37,6 @@ public final class BubbleSettings {
     public static void setSnapToEdge(Context context, boolean enabled) { prefs(context).edit().putBoolean(SNAP, enabled).apply(); }
     public static boolean isSemiIconVisible(Context context) { return prefs(context).getBoolean(SEMI_VISIBLE, false); }
     public static void setSemiIconVisible(Context context, boolean enabled) { prefs(context).edit().putBoolean(SEMI_VISIBLE, enabled).apply(); }
+    public static boolean isBubbleEnabled(Context context) { return prefs(context).getBoolean(BUBBLE_ENABLED, false); }
+    public static void setBubbleEnabled(Context context, boolean enabled) { prefs(context).edit().putBoolean(BUBBLE_ENABLED, enabled).apply(); }
 }
