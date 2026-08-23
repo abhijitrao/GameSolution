@@ -23,7 +23,6 @@ if "void restartSecondaryBubbleService()" not in s:
     s = s.replace(marker, helper + marker, 1)
 
 # The main bubble dialog must represent the actual current eligible foreground app.
-# The Recent App row separately excludes targetPackage, so it will show the previous apps.
 s = s.replace(
     'targetPackage=ForegroundAppResolver.getPreviousPackage(this,getPackageName());',
     'targetPackage=ForegroundAppResolver.getCurrentPackage(this,getPackageName());',
@@ -31,4 +30,14 @@ s = s.replace(
 )
 
 p.write_text(s, encoding="utf-8")
-print("Secondary bubble settings patched into generated FloatingService")
+
+# Guard the generated secondary-bubble Java source against the malformed delete-zone
+# background call that previously caused: "error: ')' expected".
+mp = ROOT / "MultiBubbleManager.java"
+ms = mp.read_text(encoding="utf-8")
+ms = ms.replace(
+    'z.setBackground(round(Color.rgb(95,31,43),40);',
+    'z.setBackground(round(Color.rgb(95,31,43),40));'
+)
+mp.write_text(ms, encoding="utf-8")
+print("Secondary bubble settings and Java syntax patched")
