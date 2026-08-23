@@ -31,13 +31,12 @@ s = s.replace(
 
 p.write_text(s, encoding="utf-8")
 
-# Guard the generated secondary-bubble Java source against the malformed delete-zone
-# background call that previously caused: "error: ')' expected".
+# Guard every generated secondary-bubble source against the malformed delete-zone
+# background calls. The generator source used by prepare_bubble.py can contain either
+# the normal inactive color or the active highlight color, so repair both variants.
 mp = ROOT / "MultiBubbleManager.java"
 ms = mp.read_text(encoding="utf-8")
-ms = ms.replace(
-    'z.setBackground(round(Color.rgb(95,31,43),40);',
-    'z.setBackground(round(Color.rgb(95,31,43),40));'
-)
+ms = ms.replace('z.setBackground(round(Color.rgb(95,31,43),40);', 'z.setBackground(round(Color.rgb(95,31,43),40));')
+ms = ms.replace('z.setBackground(round(Color.rgb(255,105,120),40);', 'z.setBackground(round(Color.rgb(255,105,120),40));')
 mp.write_text(ms, encoding="utf-8")
 print("Secondary bubble settings and Java syntax patched")
