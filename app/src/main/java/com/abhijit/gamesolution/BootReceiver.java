@@ -1,5 +1,6 @@
 package com.abhijit.gamesolution;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -7,8 +8,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-
-import androidx.core.app.NotificationCompat;
 
 public class BootReceiver extends BroadcastReceiver {
     private static final String CHANNEL_ID = "bubble_boot";
@@ -52,15 +51,27 @@ public class BootReceiver extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder = new Notification.Builder(context, CHANNEL_ID);
+        } else {
+            builder = new Notification.Builder(context);
+        }
+
+        builder.setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("GameSolution Bubble")
                 .setContentText("Tap to continue showing the bubble")
                 .setContentIntent(pending)
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setOngoing(false);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder.setCategory(Notification.CATEGORY_STATUS);
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder.setPriority(Notification.PRIORITY_DEFAULT);
+        }
 
         nm.notify(NOTIFICATION_ID, builder.build());
     }
