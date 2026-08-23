@@ -16,7 +16,6 @@ public final class BubbleSettings {
     private static final String SEMI_VISIBLE = "semi_icon_visible";
     private static final String BUBBLE_ENABLED = "bubble_enabled";
     private BubbleSettings() {}
-
     private static SharedPreferences prefs(Context context) { return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
     public static int getSize(Context context) { return prefs(context).getInt(SIZE, 58); }
     public static void setSize(Context context, int size) { prefs(context).edit().putInt(SIZE, Math.max(5, Math.min(120, size))).apply(); }
@@ -37,6 +36,6 @@ public final class BubbleSettings {
     public static void setSnapToEdge(Context context, boolean enabled) { prefs(context).edit().putBoolean(SNAP, enabled).apply(); }
     public static boolean isSemiIconVisible(Context context) { return prefs(context).getBoolean(SEMI_VISIBLE, false); }
     public static void setSemiIconVisible(Context context, boolean enabled) { prefs(context).edit().putBoolean(SEMI_VISIBLE, enabled).apply(); }
-    public static boolean isBubbleEnabled(Context context) { return prefs(context).getBoolean(BUBBLE_ENABLED, false); }
+    public static boolean isBubbleEnabled(Context context) { return prefs(context).getBoolean(BUBBLE_ENABLED, hasPosition(context)); }
     public static void setBubbleEnabled(Context context, boolean enabled) { prefs(context).edit().putBoolean(BUBBLE_ENABLED, enabled).apply(); }
 }
