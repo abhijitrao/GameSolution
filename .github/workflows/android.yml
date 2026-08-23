@@ -18,102 +18,58 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
       - name: Install Android SDK 35
         run: yes | sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
       - name: Restore signing keystore
-        if: ${{ github.event_name != 'pull_request' }}
+        if: github.event_name != 'pull_request'
         env:
           KEYSTORE_B64: ${{ secrets.GAME_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_B64" ]; then exit 1; fi
           echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/gamesolution-release.jks"
           echo "GAME_KEYSTORE_FILE=$RUNNER_TEMP/gamesolution-release.jks" >> "$GITHUB_ENV"
-      - name: Prepare source
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import subprocess
 
-          good='e5983b552bf142c9411c102d5d094b626195da12'
-          p=Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java')
-          s=subprocess.check_output(['git','show',f'{good}:app/src/main/java/com/abhijit/gamesolution/FloatingService.java'],text=True)
-          s=s.replace('row.setPadding(dp(8),0,dp(8),0);','row.setPadding(0,0,0,0);')
-          s=s.replace('d.setBounds(0,0,dp(32),dp(32));','d.setBounds(0,0,dp(54),dp(54));')
-          s=s.replace('d.setBounds(0,0,dp(48),dp(48));','d.setBounds(0,0,dp(54),dp(54));')
-          s=s.replace('if(++count>=5)break;','if(++count>=4)break;')
-          s=s.replace('i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);','i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);')
-          s=s.replace('BubbleSettings.isSemiIconVisible(this)','false')
-          old='''  int widthDp=BubbleSettings.getShape(this).equals("OVAL")?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);
-  int heightDp=BubbleSettings.getShape(this).equals("OVAL")?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);
-  TextView bubble=new TextView(this);
-  bubble.setText("i");bubble.setTextColor(Color.WHITE);bubble.setTextSize(30);bubble.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bubble.setGravity(Gravity.CENTER);bubble.setIncludeFontPadding(false);
-  GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});bg.setShape(GradientDrawable.OVAL);bg.setStroke(dp(2),Color.argb(80,255,255,255));bubble.setBackground(bg);bubble.setAlpha(BubbleSettings.getTransparency(this)/100f);bubble.setElevation(14f);'''
-          new='''  boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));
-  int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);
-  int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);
-  TextView bubble=new TextView(this);
-  bubble.setText(squareMode?"":"i");bubble.setTextColor(Color.WHITE);bubble.setTextSize(30);bubble.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bubble.setGravity(Gravity.CENTER);bubble.setIncludeFontPadding(false);
-  GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});bg.setShape(squareMode?GradientDrawable.RECTANGLE:GradientDrawable.OVAL);if(squareMode)bg.setCornerRadius(dp(16));bg.setStroke(dp(2),Color.argb(80,255,255,255));bubble.setBackground(bg);bubble.setAlpha(BubbleSettings.getTransparency(this)/100f);bubble.setElevation(14f);'''
-          if old not in s: raise SystemExit('bubble rendering marker not found')
-          s=s.replace(old,new,1)
-          start=s.find(' private void showBubbleSettings(){')
-          if start<0: raise SystemExit('settings method not found')
-          brace=s.find('{',start); depth=0; end=-1
-          for i in range(brace,len(s)):
-              if s[i]=='{': depth+=1
-              elif s[i]=='}':
-                  depth-=1
-                  if depth==0: end=i+1; break
-          if end<0: raise SystemExit('settings method end not found')
-          method=''' private void showBubbleSettings(){
-  removeMenu();LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(22),dp(20),dp(22),dp(18));box.setBackground(round(card,22));box.addView(label("Bubble Settings",20,text,Typeface.BOLD));box.addView(label("Adjust the floating bubble",13,secondary,Typeface.NORMAL),rowLp(-2,dp(18)));
-  box.addView(label("Shape",14,text,Typeface.BOLD));LinearLayout shapeRow=new LinearLayout(this);shapeRow.setOrientation(LinearLayout.HORIZONTAL);
-  TextView circle=label("CIRCLE",12,Color.WHITE,Typeface.BOLD);circle.setGravity(Gravity.CENTER);TextView square=label("SQUARE",12,Color.WHITE,Typeface.BOLD);square.setGravity(Gravity.CENTER);shapeRow.addView(circle,new LinearLayout.LayoutParams(0,dp(44),1));LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(0,dp(44),1);slp.leftMargin=dp(8);shapeRow.addView(square,slp);box.addView(shapeRow,rowLp(-2,dp(14)));
-  TextView sv=label("Size: "+BubbleSettings.getSize(this)+"dp",14,text,Typeface.BOLD);SeekBar sb=new SeekBar(this);sb.setMax(115);sb.setProgress(Math.max(0,BubbleSettings.getSize(this)-5));box.addView(sv);box.addView(sb,rowLp(-2,dp(10)));
-  TextView wv=label("Width: "+BubbleSettings.getWidth(this)+"dp",14,text,Typeface.BOLD);SeekBar wb=new SeekBar(this);wb.setMax(115);wb.setProgress(Math.max(0,BubbleSettings.getWidth(this)-5));TextView hv=label("Height: "+BubbleSettings.getHeight(this)+"dp",14,text,Typeface.BOLD);SeekBar hb=new SeekBar(this);hb.setMax(115);hb.setProgress(Math.max(0,BubbleSettings.getHeight(this)-5));box.addView(wv);box.addView(wb,rowLp(-2,dp(8)));box.addView(hv);box.addView(hb,rowLp(-2,dp(10)));
-  TextView av=label("Transparency: "+BubbleSettings.getTransparency(this)+"%",14,text,Typeface.BOLD);SeekBar ab=new SeekBar(this);ab.setMax(80);ab.setProgress(BubbleSettings.getTransparency(this)-20);box.addView(av);box.addView(ab,rowLp(-2,dp(12)));
-  TextView snap=label("Snap to Edge: "+(BubbleSettings.isSnapToEdge(this)?"ON":"OFF"),14,text,Typeface.BOLD);snap.setGravity(Gravity.CENTER_VERTICAL);snap.setPadding(dp(12),0,dp(12),0);snap.setBackground(round(Color.rgb(38,46,66),14));snap.setOnClickListener(v->{boolean n=!BubbleSettings.isSnapToEdge(this);BubbleSettings.setSnapToEdge(this,n);snap.setText("Snap to Edge: "+(n?"ON":"OFF"));});box.addView(snap,rowLp(dp(48),dp(8)));
-  Runnable refresh=()->{boolean sq="SQUARE".equals(BubbleSettings.getShape(this));sb.setVisibility(sq?View.GONE:View.VISIBLE);sv.setVisibility(sq?View.GONE:View.VISIBLE);wv.setVisibility(sq?View.VISIBLE:View.GONE);wb.setVisibility(sq?View.VISIBLE:View.GONE);hv.setVisibility(sq?View.VISIBLE:View.GONE);hb.setVisibility(sq?View.VISIBLE:View.GONE);circle.setBackground(round(sq?Color.rgb(38,46,66):primary,12));square.setBackground(round(sq?primary:Color.rgb(38,46,66),12));};
-  circle.setOnClickListener(v->{BubbleSettings.setShape(this,"CIRCLE");applyBubbleSettings();refresh.run();});square.setOnClickListener(v->{BubbleSettings.setShape(this,"SQUARE");BubbleSettings.setWidth(this,BubbleSettings.getSize(this));BubbleSettings.setHeight(this,BubbleSettings.getSize(this));applyBubbleSettings();refresh.run();});
-  sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;sv.setText("Size: "+n+"dp");BubbleSettings.setSize(FloatingService.this,n);BubbleSettings.setWidth(FloatingService.this,n);BubbleSettings.setHeight(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-  wb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;wv.setText("Width: "+n+"dp");BubbleSettings.setWidth(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-  hb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;hv.setText("Height: "+n+"dp");BubbleSettings.setHeight(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-  ab.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=20+p;av.setText("Transparency: "+n+"%");BubbleSettings.setTransparency(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-  refresh.run();TextView done=label("DONE",13,Color.WHITE,Typeface.BOLD);done.setGravity(Gravity.CENTER);done.setBackground(round(primary,16));done.setPadding(0,dp(14),0,dp(14));done.setOnClickListener(v->removeMenu());box.addView(done);WindowManager.LayoutParams p=new WindowManager.LayoutParams(dp(310),WindowManager.LayoutParams.WRAP_CONTENT,overlayType(),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,PixelFormat.TRANSLUCENT);p.gravity=Gravity.CENTER;box.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){removeMenu();return true;}return false;});menuView=box;windowManager.addView(menuView,p);
- }'''
-          s=s[:start]+method+s[end:]
-          sp=Path('app/src/main/java/com/abhijit/gamesolution/BubbleSettings.java')
-          bt=sp.read_text(encoding='utf-8').replace('"OVAL".equals(shape) ? "OVAL" : "CIRCLE"','"SQUARE".equals(shape) ? "SQUARE" : "CIRCLE"')
-          sp.write_text(bt,encoding='utf-8');p.write_text(s,encoding='utf-8')
-          PY
+      - name: Prepare bubble source
+        run: python3 tools/prepare_bubble.py
+
       - name: Run unit tests
         run: ./gradlew test
-      - name: Run lint
+
+      - name: Run Android Lint
         run: ./gradlew lint
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: GameSolution-debug-${{ github.sha }}
           path: app/build/outputs/apk/**/*.apk
+
       - name: Build signed release APK
-        if: ${{ github.event_name != 'pull_request' }}
+        if: github.event_name != 'pull_request'
         env:
           KEYSTORE_FILE: ${{ env.GAME_KEYSTORE_FILE }}
         run: ./gradlew assembleRelease
+
       - name: Create GitHub Release with APK
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
