@@ -61,6 +61,10 @@ public final class ForegroundAppResolver {
                 latestTimestamp = timestamp;
             }
             if (previousPackage != null) return previousPackage;
+            // Share/chooser events are intentionally filtered. If the same source app
+            // resumes before and after the share sheet, there is no distinct previous
+            // package in the filtered event stream; keep that source app as Recent.
+            if (latestPackage != null) return latestPackage;
         }
 
         long statsBegin = end - 24 * 60 * 60_000L;
@@ -103,11 +107,7 @@ public final class ForegroundAppResolver {
         }
     }
 
-    /**
-     * Android's share sheet/chooser is a transient system UI. It must never become
-     * the Recent App Bubble target. Resolve ACTION_CHOOSER to identify the device's
-     * actual chooser package instead of hard-coding com.android.intentresolver.
-     */
+    /** Android's share sheet/chooser is transient and must never be a Recent target. */
     private static boolean isShareResolver(Context context, String packageName) {
         try {
             Intent chooser = new Intent(Intent.ACTION_CHOOSER);
