@@ -64,16 +64,6 @@ jobs:
       - name: Run Android Lint
         run: gradle lint
 
-      - name: Build debug APK
-        run: gradle assembleDebug
-
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: GameSolution-debug-${{ github.sha }}
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
       - name: Build signed release APK
         if: github.event_name != 'pull_request'
         run: gradle assembleRelease
