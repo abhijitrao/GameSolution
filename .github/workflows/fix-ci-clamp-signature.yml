@@ -35,3 +35,5 @@ jobs:
           git rm .github/workflows/fix-ci-clamp-signature.yml
           git commit -m "Remove temporary CI fix workflow"
           git push
+
+# Triggered once to repair the CI patch signature.
