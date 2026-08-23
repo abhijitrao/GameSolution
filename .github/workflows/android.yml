@@ -80,6 +80,7 @@ jobs:
           s=s.replace('i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);','i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);')
           s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
           s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP+8);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
+
           s=s.replace('BubbleSettings.isSemiIconVisible(this)','false')
           s=re.sub(r'TextView semi=label\("Semi Icon Visible: ".*?box\.addView\(semi,rowLp\(dp\(48\),dp\(16\)\)\);', '', s, count=1, flags=re.S)
 
@@ -100,10 +101,13 @@ jobs:
             bubbleView=bubble;windowManager.addView(bubbleView,params);
           }'''
           s=replace_method(s,'private void showBubble()',show_bubble)
+
           clamp_method='''private int clampBubbleX(int x,int widthPx,int sw){return Math.max(0,Math.min(x,sw-widthPx));}'''
-          s=replace_method(s,'private void clampBubbleX(int x,int widthPx,int sw)',clamp_method)
+          s=replace_method(s,'private int clampBubbleX(int x,int widthPx,int sw)',clamp_method)
+
           snap_method='''private void snapToEdge(WindowManager.LayoutParams p,int size,int sw){int w=p.width;int target=(p.x+w/2<sw/2)?0:sw-w;View b=bubbleView;final int from=p.x;android.animation.ValueAnimator a=android.animation.ValueAnimator.ofInt(from,target);a.setDuration(220);a.setInterpolator(new DecelerateInterpolator());a.addUpdateListener(v->{p.x=(Integer)v.getAnimatedValue();try{windowManager.updateViewLayout(b,p);}catch(Exception ignored){}});a.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){BubbleSettings.setPosition(FloatingService.this,p.x/(float)sw,p.y/(float)getResources().getDisplayMetrics().heightPixels);}});a.start();}'''
           s=replace_method(s,'private void snapToEdge(WindowManager.LayoutParams p,int size,int sw)',snap_method)
+
           settings_method='''private void showBubbleSettings(){
             removeMenu();LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(22),dp(20),dp(22),dp(18));box.setBackground(round(card,22));box.addView(label("Bubble Settings",20,text,Typeface.BOLD));box.addView(label("Adjust the floating bubble",13,secondary,Typeface.NORMAL),rowLp(-2,dp(18)));
             TextView shapeTitle=label("Shape",14,text,Typeface.BOLD);box.addView(shapeTitle);
@@ -125,8 +129,10 @@ jobs:
             refresh.run();TextView done=label("DONE",13,Color.WHITE,Typeface.BOLD);done.setGravity(Gravity.CENTER);done.setBackground(round(primary,16));done.setPadding(0,dp(14),0,dp(14));done.setOnClickListener(v->removeMenu());box.addView(done);WindowManager.LayoutParams p=new WindowManager.LayoutParams(dp(310),WindowManager.LayoutParams.WRAP_CONTENT,overlayType(),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,PixelFormat.TRANSLUCENT);p.gravity=Gravity.CENTER;box.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){removeMenu();return true;}return false;});menuView=box;windowManager.addView(menuView,p);
           }'''
           s=replace_method(s,'private void showBubbleSettings()',settings_method)
+
           apply_method='''private void applyBubbleSettings(){if(bubbleView==null)return;WindowManager.LayoutParams p=(WindowManager.LayoutParams)bubbleView.getLayoutParams();int sw=getResources().getDisplayMetrics().widthPixels,sh=getResources().getDisplayMetrics().heightPixels;int oldW=Math.max(1,p.width),oldH=Math.max(1,p.height);float centerX=p.x+oldW/2f,centerY=p.y+oldH/2f;boolean ovalMode=BubbleSettings.getShape(this).equals("OVAL");int widthDp=ovalMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=ovalMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);p.width=dp(widthDp);p.height=dp(heightDp);p.x=clampBubbleX((int)(centerX-p.width/2f),p.width,sw);p.y=Math.max(dp(48),Math.min((int)(centerY-p.height/2f),sh-p.height-dp(8)));windowManager.updateViewLayout(bubbleView,p);BubbleSettings.setPosition(this,p.x/(float)sw,p.y/(float)sh);}'''
           s=replace_method(s,'private void applyBubbleSettings()',apply_method)
+
           f.write_text(s,encoding='utf-8')
           PY
           git config user.name "github-actions[bot]"
