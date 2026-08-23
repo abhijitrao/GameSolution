@@ -41,13 +41,19 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           KEYSTORE_B64: ${{ secrets.GAME_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.GAME_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.GAME_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.GAME_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "GAME_KEYSTORE_BASE64 secret is not configured"
-            exit 1
-          fi
+          set -e
+          if [ -z "$KEYSTORE_B64" ]; then echo "GAME_KEYSTORE_BASE64 secret is not configured"; exit 1; fi
+          if [ -z "$KEYSTORE_PASSWORD" ]; then echo "GAME_KEYSTORE_PASSWORD secret is not configured"; exit 1; fi
+          if [ -z "$KEY_ALIAS" ]; then echo "GAME_KEY_ALIAS secret is not configured"; exit 1; fi
           echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/gamesolution-release.jks"
           echo "GAME_KEYSTORE_FILE=$RUNNER_TEMP/gamesolution-release.jks" >> "$GITHUB_ENV"
+          echo "GAME_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "GAME_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "GAME_KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" >> "$GITHUB_ENV"
 
       - name: Prepare bubble source
         run: python3 tools/prepare_bubble.py
@@ -61,29 +67,18 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: GameSolution-debug-${{ github.sha }}
-          path: app/build/outputs/apk/**/*.apk
-
       - name: Build signed release APK
         if: github.event_name != 'pull_request'
-        env:
-          GAME_KEYSTORE_FILE: ${{ env.GAME_KEYSTORE_FILE }}
-          GAME_KEYSTORE_PASSWORD: ${{ secrets.GAME_KEYSTORE_PASSWORD }}
-          GAME_KEY_ALIAS: ${{ secrets.GAME_KEY_ALIAS }}
-          GAME_KEY_PASSWORD: ${{ secrets.GAME_KEY_PASSWORD }}
-        run: |
-          if [ -z "$GAME_KEYSTORE_PASSWORD" ]; then
-            echo "GAME_KEYSTORE_PASSWORD secret is not configured"
-            exit 1
-          fi
-          if [ -z "$GAME_KEY_ALIAS" ]; then
-            echo "GAME_KEY_ALIAS secret is not configured"
-            exit 1
-          fi
-          gradle assembleRelease
+        run: gradle assembleRelease
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GameSolution-APKs-${{ github.sha }}
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
 
       - name: Create GitHub Release with APK
         if: startsWith(github.ref, 'refs/tags/v')
