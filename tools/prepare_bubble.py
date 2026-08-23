@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import subprocess
 
 GOOD = "8afaa7704b9908063a2458772621703216fcc61d"
@@ -30,17 +31,19 @@ s = s.replace(old_size, new_size, 1)
 s = s.replace('bubble.setText("i");', 'bubble.setText(squareMode?"":"i");', 1)
 s = s.replace('bg.setShape(GradientDrawable.OVAL);bg.setStroke', 'bg.setShape(squareMode?GradientDrawable.RECTANGLE:GradientDrawable.OVAL);if(squareMode)bg.setCornerRadius(dp(16));bg.setStroke', 1)
 
-old_refresh = 'Runnable refresh=()->{boolean ovalMode=BubbleSettings.getShape(this).equals("SQUARE");sb.setVisibility(ovalMode?View.GONE:View.VISIBLE);sv.setVisibility(ovalMode?View.GONE:View.VISIBLE);wv.setVisibility(ovalMode?View.VISIBLE:View.GONE);wb.setVisibility(ovalMode?View.VISIBLE:View.GONE);hv.setVisibility(ovalMode?View.VISIBLE:View.GONE);hb.setVisibility(ovalMode?View.VISIBLE:View.GONE);circle.setBackground(round(ovalMode?Color.rgb(38,46,66):primary,12));oval.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));};'
+# Replace the refresh lambda by structure rather than an exact generated line.
 new_refresh = 'Runnable refresh=()->{boolean sq="SQUARE".equals(BubbleSettings.getShape(this));sb.setVisibility(sq?View.GONE:View.VISIBLE);sv.setVisibility(sq?View.GONE:View.VISIBLE);wv.setVisibility(sq?View.VISIBLE:View.GONE);wb.setVisibility(sq?View.VISIBLE:View.GONE);hv.setVisibility(sq?View.VISIBLE:View.GONE);hb.setVisibility(sq?View.VISIBLE:View.GONE);circle.setBackground(round(sq?Color.rgb(38,46,66):primary,12));square.setBackground(round(sq?primary:Color.rgb(38,46,66),12));};'
-if old_refresh not in s:
+refresh_pattern = r'Runnable\s+refresh\s*=\s*\(\)\s*->\s*\{.*?\};'
+s, refresh_count = re.subn(refresh_pattern, new_refresh, s, count=1, flags=re.DOTALL)
+if refresh_count != 1:
     raise SystemExit("settings refresh marker not found")
-s = s.replace(old_refresh, new_refresh, 1)
 
-old_clicks = 'circle.setOnClickListener(v->{BubbleSettings.setShape(this,"CIRCLE");int n=BubbleSettings.getWidth(this);BubbleSettings.setSize(this,n);applyBubbleSettings();refresh.run();});oval.setOnClickListener(v->{BubbleSettings.setShape(this,"SQUARE");BubbleSettings.setWidth(this,BubbleSettings.getSize(this));BubbleSettings.setHeight(this,BubbleSettings.getSize(this));applyBubbleSettings();refresh.run();});'
+# Replace the shape click handlers structurally; formatting/spacing changes should not break CI.
 new_clicks = 'circle.setOnClickListener(v->{BubbleSettings.setShape(this,"CIRCLE");applyBubbleSettings();refresh.run();});square.setOnClickListener(v->{BubbleSettings.setShape(this,"SQUARE");BubbleSettings.setWidth(this,BubbleSettings.getSize(this));BubbleSettings.setHeight(this,BubbleSettings.getSize(this));applyBubbleSettings();refresh.run();});'
-if old_clicks not in s:
+click_pattern = r'circle\.setOnClickListener\(v->\{.*?\}\);\s*square\.setOnClickListener\(v->\{.*?\}\);'
+s, click_count = re.subn(click_pattern, new_clicks, s, count=1, flags=re.DOTALL)
+if click_count != 1:
     raise SystemExit("settings click marker not found")
-s = s.replace(old_clicks, new_clicks, 1)
 
 s = s.replace('boolean ovalMode=BubbleSettings.getShape(this).equals("SQUARE");', 'boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));', 1)
 s = s.replace('int widthDp=ovalMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=ovalMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);', 'int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);', 1)
