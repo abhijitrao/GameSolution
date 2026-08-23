@@ -4,8 +4,11 @@ import android.app.usage.UsageEvents;
 import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 
-/** Resolves the current and previous non-GameSolution app, ignoring launcher/home. */
+/** Resolves foreground apps while ignoring GameSolution, launcher/home and Android share/chooser resolver. */
 public final class ForegroundAppResolver {
     private ForegroundAppResolver() {}
 
@@ -83,15 +86,33 @@ public final class ForegroundAppResolver {
     private static boolean isEligible(Context context, String packageName, String ownPackage) {
         return packageName != null
                 && !ownPackage.equals(packageName)
-                && !isLauncher(context, packageName);
+                && !isLauncher(context, packageName)
+                && !isShareResolver(context, packageName);
     }
 
     private static boolean isLauncher(Context context, String packageName) {
         try {
-            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_MAIN);
-            intent.addCategory(android.content.Intent.CATEGORY_HOME);
-            android.content.pm.ResolveInfo info = context.getPackageManager().resolveActivity(
-                    intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_HOME);
+            ResolveInfo info = context.getPackageManager().resolveActivity(
+                    intent, PackageManager.MATCH_DEFAULT_ONLY);
+            return info != null && info.activityInfo != null
+                    && packageName.equals(info.activityInfo.packageName);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Android's share sheet/chooser is a transient system UI. It must never become
+     * the Recent App Bubble target. Resolve ACTION_CHOOSER to identify the device's
+     * actual chooser package instead of hard-coding com.android.intentresolver.
+     */
+    private static boolean isShareResolver(Context context, String packageName) {
+        try {
+            Intent chooser = new Intent(Intent.ACTION_CHOOSER);
+            ResolveInfo info = context.getPackageManager().resolveActivity(
+                    chooser, PackageManager.MATCH_DEFAULT_ONLY);
             return info != null && info.activityInfo != null
                     && packageName.equals(info.activityInfo.packageName);
         } catch (Exception ignored) {
