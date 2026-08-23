@@ -58,6 +58,9 @@ jobs:
       - name: Prepare bubble source
         run: python3 tools/prepare_bubble.py
 
+      - name: Patch secondary bubble settings
+        run: python3 tools/patch_secondary_bubbles.py
+
       - name: Run unit tests
         run: gradle test
 
