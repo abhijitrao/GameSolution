@@ -15,6 +15,8 @@ public final class BubbleSettings {
     private static final String SNAP = "snap_to_edge";
     private static final String SEMI_VISIBLE = "semi_icon_visible";
     private static final String BUBBLE_ENABLED = "bubble_enabled";
+    private static final String RECENT_APP_BUBBLE = "recent_app_bubble";
+    private static final String ACTIVITY_SWITCH_BUBBLE = "activity_switch_bubble";
     private BubbleSettings() {}
     private static SharedPreferences prefs(Context context) { return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
     public static int getSize(Context context) { return prefs(context).getInt(SIZE, 58); }
@@ -38,4 +40,8 @@ public final class BubbleSettings {
     public static void setSemiIconVisible(Context context, boolean enabled) { prefs(context).edit().putBoolean(SEMI_VISIBLE, enabled).apply(); }
     public static boolean isBubbleEnabled(Context context) { return prefs(context).getBoolean(BUBBLE_ENABLED, hasPosition(context)); }
     public static void setBubbleEnabled(Context context, boolean enabled) { prefs(context).edit().putBoolean(BUBBLE_ENABLED, enabled).apply(); }
+    public static boolean isRecentAppBubbleEnabled(Context context) { return prefs(context).getBoolean(RECENT_APP_BUBBLE, false); }
+    public static void setRecentAppBubbleEnabled(Context context, boolean enabled) { prefs(context).edit().putBoolean(RECENT_APP_BUBBLE, enabled).apply(); }
+    public static boolean isActivitySwitchBubbleEnabled(Context context) { return prefs(context).getBoolean(ACTIVITY_SWITCH_BUBBLE, false); }
+    public static void setActivitySwitchBubbleEnabled(Context context, boolean enabled) { prefs(context).edit().putBoolean(ACTIVITY_SWITCH_BUBBLE, enabled).apply(); }
 }
