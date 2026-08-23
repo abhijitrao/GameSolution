@@ -44,135 +44,78 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import subprocess
 
-          def replace_method(source, signature, replacement):
-              start = source.find(signature)
-              if start < 0:
-                  raise SystemExit(f'{signature} method not found')
-              brace = source.find('{', start)
-              if brace < 0:
-                  raise SystemExit(f'{signature} opening brace not found')
-              depth = 0
-              for i in range(brace, len(source)):
-                  if source[i] == '{': depth += 1
-                  elif source[i] == '}':
-                      depth -= 1
-                      if depth == 0:
-                          return source[:start] + replacement + source[i + 1:]
-              raise SystemExit(f'{signature} closing brace not found')
-
-          p=Path('app/src/main/java/com/abhijit/gamesolution/LiveMonitorDialog.java')
-          t=p.read_text(encoding='utf-8')
-          marker='    private static int readCpuPercent(int pid) {'
-          if 'private static int findPid(ActivityManager am, String packageName)' not in t:
-            m='\n'.join(['    private static int findPid(ActivityManager am, String packageName) {','        if (am == null || packageName == null) return -1;','        try {','            java.util.List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();','            if (processes == null) return -1;','            for (ActivityManager.RunningAppProcessInfo process : processes) {','                if (process != null && packageName.equals(process.processName)) return process.pid;','            }','        } catch (Exception ignored) {}','        return -1;','    }',''])
-            if marker not in t: raise SystemExit('LiveMonitor marker not found')
-            p.write_text(t.replace(marker,m+marker,1),encoding='utf-8')
-
-          f=Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java')
-          s=f.read_text(encoding='utf-8')
+          good='e5983b552bf142c9411c102d5d094b626195da12'
+          p=Path('app/src/main/java/com/abhijit/gamesolution/FloatingService.java')
+          s=subprocess.check_output(['git','show',f'{good}:app/src/main/java/com/abhijit/gamesolution/FloatingService.java'],text=True)
           s=s.replace('row.setPadding(dp(8),0,dp(8),0);','row.setPadding(0,0,0,0);')
           s=s.replace('d.setBounds(0,0,dp(32),dp(32));','d.setBounds(0,0,dp(54),dp(54));')
           s=s.replace('d.setBounds(0,0,dp(48),dp(48));','d.setBounds(0,0,dp(54),dp(54));')
-          s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=5)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;')
-          s=s.replace('row.addView(icon,new LinearLayout.LayoutParams(0,dp(54),1));if(++count>=4)break;','row.addView(icon,new LinearLayout.LayoutParams(dp(54),dp(54)));if(++count>=4)break;')
+          s=s.replace('if(++count>=5)break;','if(++count>=4)break;')
           s=s.replace('i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);','i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);')
-          s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
-          s=s.replace('int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(MENU_GAP_DP+8);','int sw=getResources().getDisplayMetrics().widthPixels,mw=dp(MENU_WIDTH_DP),gap=dp(18);')
-
           s=s.replace('BubbleSettings.isSemiIconVisible(this)','false')
-          s=re.sub(r'TextView semi=label\("Semi Icon Visible: ".*?box\.addView\(semi,rowLp\(dp\(48\),dp\(16\)\)\);', '', s, count=1, flags=re.S)
-
-          show_bubble='''private void showBubble(){
-            windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);
-            int widthDp=BubbleSettings.getShape(this).equals("OVAL")?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);
-            int heightDp=BubbleSettings.getShape(this).equals("OVAL")?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);
-            TextView bubble=new TextView(this);
-            bubble.setText("i");bubble.setTextColor(Color.WHITE);bubble.setTextSize(30);bubble.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bubble.setGravity(Gravity.CENTER);bubble.setIncludeFontPadding(false);
-            GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});bg.setShape(GradientDrawable.OVAL);bg.setStroke(dp(2),Color.argb(80,255,255,255));bubble.setBackground(bg);bubble.setAlpha(BubbleSettings.getTransparency(this)/100f);bubble.setElevation(14f);
-            final WindowManager.LayoutParams params=new WindowManager.LayoutParams(dp(widthDp),dp(heightDp),overlayType(),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,PixelFormat.TRANSLUCENT);params.gravity=Gravity.TOP|Gravity.START;
-            int sw=getResources().getDisplayMetrics().widthPixels,sh=getResources().getDisplayMetrics().heightPixels;
-            if(BubbleSettings.hasPosition(this)){params.x=clampBubbleX((int)(BubbleSettings.getPositionX(this)*sw),params.width,sw);params.y=clamp((int)(BubbleSettings.getPositionY(this)*sh),dp(48),sh-params.height-dp(8));}else{params.x=sw-params.width;params.y=dp(220);}
-            bubble.setOnTouchListener((v,e)->{switch(e.getActionMasked()){
-                case MotionEvent.ACTION_DOWN:dragging=false;deleteZoneActive=false;downX=e.getRawX();downY=e.getRawY();startX=params.x;startY=params.y;return true;
-                case MotionEvent.ACTION_MOVE:float dx=e.getRawX()-downX,dy=e.getRawY()-downY;if(Math.abs(dx)>dp(6)||Math.abs(dy)>dp(6)){if(!dragging){dragging=true;vibrate(12);dismissAllOverlays();showDeleteZone();}}params.x=clampBubbleX(startX+(int)dx,params.width,sw);params.y=clamp((int)(startY+dy),dp(48),sh-params.height-dp(8));windowManager.updateViewLayout(bubble,params);if(dragging)updateDeleteZoneState(params.x,params.y,Math.max(widthDp,heightDp));return true;
-                case MotionEvent.ACTION_UP:if(dragging){boolean remove=deleteZoneActive;vibrate(remove?35:12);if(remove){animateDeleteAndStop(bubble);return true;}hideDeleteZone();if(BubbleSettings.isSnapToEdge(this)){snapToEdge(params,Math.max(widthDp,heightDp),sw);}else savePosition(params,sw,sh,Math.max(widthDp,heightDp));return true;}vibrate(18);if(LiveMonitorDialog.isShowing()){LiveMonitorDialog.dismiss();return true;}if(AppDetailInfoDialog.isShowing()){AppDetailInfoDialog.dismissFromBubbleTap();return true;}if(menuView!=null){removeMenu();return true;}openMenu(params.x,params.y,Math.max(widthDp,heightDp));return true;}return false;});
-            bubbleView=bubble;windowManager.addView(bubbleView,params);
-          }'''
-          s=replace_method(s,'private void showBubble()',show_bubble)
-
-          clamp_method='''private int clampBubbleX(int x,int widthPx,int sw){return Math.max(0,Math.min(x,sw-widthPx));}'''
-          s=replace_method(s,'private int clampBubbleX(int x,int widthPx,int sw)',clamp_method)
-
-          snap_method='''private void snapToEdge(WindowManager.LayoutParams p,int size,int sw){int w=p.width;int target=(p.x+w/2<sw/2)?0:sw-w;View b=bubbleView;final int from=p.x;android.animation.ValueAnimator a=android.animation.ValueAnimator.ofInt(from,target);a.setDuration(220);a.setInterpolator(new DecelerateInterpolator());a.addUpdateListener(v->{p.x=(Integer)v.getAnimatedValue();try{windowManager.updateViewLayout(b,p);}catch(Exception ignored){}});a.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){BubbleSettings.setPosition(FloatingService.this,p.x/(float)sw,p.y/(float)getResources().getDisplayMetrics().heightPixels);}});a.start();}'''
-          s=replace_method(s,'private void snapToEdge(WindowManager.LayoutParams p,int size,int sw)',snap_method)
-
-          settings_method='''private void showBubbleSettings(){
-            removeMenu();LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(22),dp(20),dp(22),dp(18));box.setBackground(round(card,22));box.addView(label("Bubble Settings",20,text,Typeface.BOLD));box.addView(label("Adjust the floating bubble",13,secondary,Typeface.NORMAL),rowLp(-2,dp(18)));
-            TextView shapeTitle=label("Shape",14,text,Typeface.BOLD);box.addView(shapeTitle);
-            LinearLayout shapeRow=new LinearLayout(this);shapeRow.setOrientation(LinearLayout.HORIZONTAL);
-            TextView circle=label("CIRCLE",12,Color.WHITE,Typeface.BOLD);circle.setGravity(Gravity.CENTER);circle.setBackground(round(primary,12));
-            TextView oval=label("OVAL",12,Color.WHITE,Typeface.BOLD);oval.setGravity(Gravity.CENTER);oval.setBackground(round(Color.rgb(38,46,66),12));
-            shapeRow.addView(circle,new LinearLayout.LayoutParams(0,dp(44),1));LinearLayout.LayoutParams olp=new LinearLayout.LayoutParams(0,dp(44),1);olp.leftMargin=dp(8);shapeRow.addView(oval,olp);box.addView(shapeRow,rowLp(-2,dp(14)));
-            TextView sv=label("Size: "+BubbleSettings.getSize(this)+"dp",14,text,Typeface.BOLD);box.addView(sv);SeekBar sb=new SeekBar(this);sb.setMax(115);sb.setProgress(Math.max(0,BubbleSettings.getSize(this)-5));box.addView(sb,rowLp(-2,dp(10)));
-            TextView wv=label("Width: "+BubbleSettings.getWidth(this)+"dp",14,text,Typeface.BOLD);SeekBar wb=new SeekBar(this);wb.setMax(115);wb.setProgress(Math.max(0,BubbleSettings.getWidth(this)-5));TextView hv=label("Height: "+BubbleSettings.getHeight(this)+"dp",14,text,Typeface.BOLD);SeekBar hb=new SeekBar(this);hb.setMax(115);hb.setProgress(Math.max(0,BubbleSettings.getHeight(this)-5));
-            box.addView(wv);box.addView(wb,rowLp(-2,dp(8)));box.addView(hv);box.addView(hb,rowLp(-2,dp(10)));
-            TextView av=label("Transparency: "+BubbleSettings.getTransparency(this)+"%",14,text,Typeface.BOLD);box.addView(av);SeekBar ab=new SeekBar(this);ab.setMax(80);ab.setProgress(BubbleSettings.getTransparency(this)-20);box.addView(ab,rowLp(-2,dp(12)));
-            TextView snap=label("Snap to Edge: "+(BubbleSettings.isSnapToEdge(this)?"ON":"OFF"),14,text,Typeface.BOLD);snap.setGravity(Gravity.CENTER_VERTICAL);snap.setPadding(dp(12),0,dp(12),0);snap.setBackground(round(Color.rgb(38,46,66),14));snap.setOnClickListener(v->{boolean n=!BubbleSettings.isSnapToEdge(this);BubbleSettings.setSnapToEdge(this,n);snap.setText("Snap to Edge: "+(n?"ON":"OFF"));});box.addView(snap,rowLp(dp(48),dp(8)));
-            Runnable refresh=()->{boolean ovalMode=BubbleSettings.getShape(this).equals("OVAL");sb.setVisibility(ovalMode?View.GONE:View.VISIBLE);sv.setVisibility(ovalMode?View.GONE:View.VISIBLE);wv.setVisibility(ovalMode?View.VISIBLE:View.GONE);wb.setVisibility(ovalMode?View.VISIBLE:View.GONE);hv.setVisibility(ovalMode?View.VISIBLE:View.GONE);hb.setVisibility(ovalMode?View.VISIBLE:View.GONE);circle.setBackground(round(ovalMode?Color.rgb(38,46,66):primary,12));oval.setBackground(round(ovalMode?primary:Color.rgb(38,46,66),12));};
-            circle.setOnClickListener(v->{BubbleSettings.setShape(this,"CIRCLE");int n=BubbleSettings.getWidth(this);BubbleSettings.setSize(this,n);applyBubbleSettings();refresh.run();});oval.setOnClickListener(v->{BubbleSettings.setShape(this,"OVAL");BubbleSettings.setWidth(this,BubbleSettings.getSize(this));BubbleSettings.setHeight(this,BubbleSettings.getSize(this));applyBubbleSettings();refresh.run();});
-            sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;sv.setText("Size: "+n+"dp");BubbleSettings.setSize(FloatingService.this,n);BubbleSettings.setWidth(FloatingService.this,n);BubbleSettings.setHeight(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-            wb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;wv.setText("Width: "+n+"dp");BubbleSettings.setWidth(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-            hb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;hv.setText("Height: "+n+"dp");BubbleSettings.setHeight(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-            ab.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=20+p;av.setText("Transparency: "+n+"%");BubbleSettings.setTransparency(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
-            refresh.run();TextView done=label("DONE",13,Color.WHITE,Typeface.BOLD);done.setGravity(Gravity.CENTER);done.setBackground(round(primary,16));done.setPadding(0,dp(14),0,dp(14));done.setOnClickListener(v->removeMenu());box.addView(done);WindowManager.LayoutParams p=new WindowManager.LayoutParams(dp(310),WindowManager.LayoutParams.WRAP_CONTENT,overlayType(),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,PixelFormat.TRANSLUCENT);p.gravity=Gravity.CENTER;box.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){removeMenu();return true;}return false;});menuView=box;windowManager.addView(menuView,p);
-          }'''
-          s=replace_method(s,'private void showBubbleSettings()',settings_method)
-
-          apply_method='''private void applyBubbleSettings(){if(bubbleView==null)return;WindowManager.LayoutParams p=(WindowManager.LayoutParams)bubbleView.getLayoutParams();int sw=getResources().getDisplayMetrics().widthPixels,sh=getResources().getDisplayMetrics().heightPixels;int oldW=Math.max(1,p.width),oldH=Math.max(1,p.height);float centerX=p.x+oldW/2f,centerY=p.y+oldH/2f;boolean ovalMode=BubbleSettings.getShape(this).equals("OVAL");int widthDp=ovalMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);int heightDp=ovalMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);p.width=dp(widthDp);p.height=dp(heightDp);p.x=clampBubbleX((int)(centerX-p.width/2f),p.width,sw);p.y=Math.max(dp(48),Math.min((int)(centerY-p.height/2f),sh-p.height-dp(8)));windowManager.updateViewLayout(bubbleView,p);BubbleSettings.setPosition(this,p.x/(float)sw,p.y/(float)sh);}'''
-          s=replace_method(s,'private void applyBubbleSettings()',apply_method)
-
-          f.write_text(s,encoding='utf-8')
+          old='''  int widthDp=BubbleSettings.getShape(this).equals("OVAL")?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);
+  int heightDp=BubbleSettings.getShape(this).equals("OVAL")?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);
+  TextView bubble=new TextView(this);
+  bubble.setText("i");bubble.setTextColor(Color.WHITE);bubble.setTextSize(30);bubble.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bubble.setGravity(Gravity.CENTER);bubble.setIncludeFontPadding(false);
+  GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});bg.setShape(GradientDrawable.OVAL);bg.setStroke(dp(2),Color.argb(80,255,255,255));bubble.setBackground(bg);bubble.setAlpha(BubbleSettings.getTransparency(this)/100f);bubble.setElevation(14f);'''
+          new='''  boolean squareMode="SQUARE".equals(BubbleSettings.getShape(this));
+  int widthDp=squareMode?BubbleSettings.getWidth(this):BubbleSettings.getSize(this);
+  int heightDp=squareMode?BubbleSettings.getHeight(this):BubbleSettings.getSize(this);
+  TextView bubble=new TextView(this);
+  bubble.setText(squareMode?"":"i");bubble.setTextColor(Color.WHITE);bubble.setTextSize(30);bubble.setTypeface(Typeface.DEFAULT,Typeface.BOLD);bubble.setGravity(Gravity.CENTER);bubble.setIncludeFontPadding(false);
+  GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(125,155,255),Color.rgb(72,91,205)});bg.setShape(squareMode?GradientDrawable.RECTANGLE:GradientDrawable.OVAL);if(squareMode)bg.setCornerRadius(dp(16));bg.setStroke(dp(2),Color.argb(80,255,255,255));bubble.setBackground(bg);bubble.setAlpha(BubbleSettings.getTransparency(this)/100f);bubble.setElevation(14f);'''
+          if old not in s: raise SystemExit('bubble rendering marker not found')
+          s=s.replace(old,new,1)
+          start=s.find(' private void showBubbleSettings(){')
+          if start<0: raise SystemExit('settings method not found')
+          brace=s.find('{',start); depth=0; end=-1
+          for i in range(brace,len(s)):
+              if s[i]=='{': depth+=1
+              elif s[i]=='}':
+                  depth-=1
+                  if depth==0: end=i+1; break
+          if end<0: raise SystemExit('settings method end not found')
+          method=''' private void showBubbleSettings(){
+  removeMenu();LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(22),dp(20),dp(22),dp(18));box.setBackground(round(card,22));box.addView(label("Bubble Settings",20,text,Typeface.BOLD));box.addView(label("Adjust the floating bubble",13,secondary,Typeface.NORMAL),rowLp(-2,dp(18)));
+  box.addView(label("Shape",14,text,Typeface.BOLD));LinearLayout shapeRow=new LinearLayout(this);shapeRow.setOrientation(LinearLayout.HORIZONTAL);
+  TextView circle=label("CIRCLE",12,Color.WHITE,Typeface.BOLD);circle.setGravity(Gravity.CENTER);TextView square=label("SQUARE",12,Color.WHITE,Typeface.BOLD);square.setGravity(Gravity.CENTER);shapeRow.addView(circle,new LinearLayout.LayoutParams(0,dp(44),1));LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(0,dp(44),1);slp.leftMargin=dp(8);shapeRow.addView(square,slp);box.addView(shapeRow,rowLp(-2,dp(14)));
+  TextView sv=label("Size: "+BubbleSettings.getSize(this)+"dp",14,text,Typeface.BOLD);SeekBar sb=new SeekBar(this);sb.setMax(115);sb.setProgress(Math.max(0,BubbleSettings.getSize(this)-5));box.addView(sv);box.addView(sb,rowLp(-2,dp(10)));
+  TextView wv=label("Width: "+BubbleSettings.getWidth(this)+"dp",14,text,Typeface.BOLD);SeekBar wb=new SeekBar(this);wb.setMax(115);wb.setProgress(Math.max(0,BubbleSettings.getWidth(this)-5));TextView hv=label("Height: "+BubbleSettings.getHeight(this)+"dp",14,text,Typeface.BOLD);SeekBar hb=new SeekBar(this);hb.setMax(115);hb.setProgress(Math.max(0,BubbleSettings.getHeight(this)-5));box.addView(wv);box.addView(wb,rowLp(-2,dp(8)));box.addView(hv);box.addView(hb,rowLp(-2,dp(10)));
+  TextView av=label("Transparency: "+BubbleSettings.getTransparency(this)+"%",14,text,Typeface.BOLD);SeekBar ab=new SeekBar(this);ab.setMax(80);ab.setProgress(BubbleSettings.getTransparency(this)-20);box.addView(av);box.addView(ab,rowLp(-2,dp(12)));
+  TextView snap=label("Snap to Edge: "+(BubbleSettings.isSnapToEdge(this)?"ON":"OFF"),14,text,Typeface.BOLD);snap.setGravity(Gravity.CENTER_VERTICAL);snap.setPadding(dp(12),0,dp(12),0);snap.setBackground(round(Color.rgb(38,46,66),14));snap.setOnClickListener(v->{boolean n=!BubbleSettings.isSnapToEdge(this);BubbleSettings.setSnapToEdge(this,n);snap.setText("Snap to Edge: "+(n?"ON":"OFF"));});box.addView(snap,rowLp(dp(48),dp(8)));
+  Runnable refresh=()->{boolean sq="SQUARE".equals(BubbleSettings.getShape(this));sb.setVisibility(sq?View.GONE:View.VISIBLE);sv.setVisibility(sq?View.GONE:View.VISIBLE);wv.setVisibility(sq?View.VISIBLE:View.GONE);wb.setVisibility(sq?View.VISIBLE:View.GONE);hv.setVisibility(sq?View.VISIBLE:View.GONE);hb.setVisibility(sq?View.VISIBLE:View.GONE);circle.setBackground(round(sq?Color.rgb(38,46,66):primary,12));square.setBackground(round(sq?primary:Color.rgb(38,46,66),12));};
+  circle.setOnClickListener(v->{BubbleSettings.setShape(this,"CIRCLE");applyBubbleSettings();refresh.run();});square.setOnClickListener(v->{BubbleSettings.setShape(this,"SQUARE");BubbleSettings.setWidth(this,BubbleSettings.getSize(this));BubbleSettings.setHeight(this,BubbleSettings.getSize(this));applyBubbleSettings();refresh.run();});
+  sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;sv.setText("Size: "+n+"dp");BubbleSettings.setSize(FloatingService.this,n);BubbleSettings.setWidth(FloatingService.this,n);BubbleSettings.setHeight(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
+  wb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;wv.setText("Width: "+n+"dp");BubbleSettings.setWidth(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
+  hb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=5+p;hv.setText("Height: "+n+"dp");BubbleSettings.setHeight(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
+  ab.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean f){int n=20+p;av.setText("Transparency: "+n+"%");BubbleSettings.setTransparency(FloatingService.this,n);applyBubbleSettings();}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});
+  refresh.run();TextView done=label("DONE",13,Color.WHITE,Typeface.BOLD);done.setGravity(Gravity.CENTER);done.setBackground(round(primary,16));done.setPadding(0,dp(14),0,dp(14));done.setOnClickListener(v->removeMenu());box.addView(done);WindowManager.LayoutParams p=new WindowManager.LayoutParams(dp(310),WindowManager.LayoutParams.WRAP_CONTENT,overlayType(),WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,PixelFormat.TRANSLUCENT);p.gravity=Gravity.CENTER;box.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){removeMenu();return true;}return false;});menuView=box;windowManager.addView(menuView,p);
+ }'''
+          s=s[:start]+method+s[end:]
+          sp=Path('app/src/main/java/com/abhijit/gamesolution/BubbleSettings.java')
+          bt=sp.read_text(encoding='utf-8').replace('"OVAL".equals(shape) ? "OVAL" : "CIRCLE"','"SQUARE".equals(shape) ? "SQUARE" : "CIRCLE"')
+          sp.write_text(bt,encoding='utf-8');p.write_text(s,encoding='utf-8')
           PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/com/abhijit/gamesolution/FloatingService.java
-          if ! git diff --cached --quiet; then
-            git commit -m "Add bubble circle and oval size settings"
-            git push
-          fi
       - name: Run unit tests
-        run: gradle testDebugUnitTest --stacktrace
-      - name: Run Android Lint
-        run: gradle lintDebug --stacktrace
+        run: ./gradlew test
+      - name: Run lint
+        run: ./gradlew lint
       - name: Build debug APK
-        if: ${{ github.event_name == 'pull_request' }}
-        run: gradle assembleDebug --stacktrace
-      - name: Build signed release APK
-        if: ${{ github.event_name != 'pull_request' }}
-        env:
-          GAME_KEYSTORE_PASSWORD: ${{ secrets.GAME_KEYSTORE_PASSWORD }}
-          GAME_KEY_ALIAS: ${{ secrets.GAME_KEY_ALIAS }}
-        run: gradle assembleRelease --stacktrace
+        run: ./gradlew assembleDebug
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GameSolution-apk
-          path: ${{ github.event_name == 'pull_request' && 'app/build/outputs/apk/debug/app-debug.apk' || 'app/build/outputs/apk/release/app-release.apk' }}
-          if-no-files-found: error
-          retention-days: 30
-      - name: Upload lint report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: GameSolution-lint-report
-          path: app/build/reports/lint-results-debug.html
-          if-no-files-found: ignore
-          retention-days: 14
+          name: GameSolution-debug-${{ github.sha }}
+          path: app/build/outputs/apk/**/*.apk
+      - name: Build signed release APK
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          KEYSTORE_FILE: ${{ env.GAME_KEYSTORE_FILE }}
+        run: ./gradlew assembleRelease
       - name: Create GitHub Release with APK
-        if: startsWith(github.ref, 'refs/tags/v') && success()
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
-          files: app/build/outputs/apk/release/app-release.apk
+          files: app/build/outputs/apk/release/*.apk
