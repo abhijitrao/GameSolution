@@ -87,4 +87,17 @@ if activity_marker in ls and 'boolean activityChanged = !snapshot.activity.equal
 
 lp.write_text(ls, encoding="utf-8")
 p.write_text(s, encoding="utf-8")
+
+# Keep the checked-in secondary bubble source compilable as well. The CI job runs
+# this preparation step before tests, so fix the known missing parenthesis in-place
+# instead of relying on a manual edit of the generated source.
+mp = ROOT / "MultiBubbleManager.java"
+if mp.exists():
+    ms = mp.read_text(encoding="utf-8")
+    broken = 'view.measure(View.MeasureSpec.makeMeasureSpec(max,View.MeasureSpec.AT_MOST),View.MeasureSpec.makeMeasureSpec(dp(ACTIVITY_HEIGHT_DP),View.MeasureSpec.EXACTLY);'
+    fixed = 'view.measure(View.MeasureSpec.makeMeasureSpec(max,View.MeasureSpec.AT_MOST),View.MeasureSpec.makeMeasureSpec(dp(ACTIVITY_HEIGHT_DP),View.MeasureSpec.EXACTLY));'
+    if broken in ms:
+        ms = ms.replace(broken, fixed, 1)
+        mp.write_text(ms, encoding="utf-8")
+
 print("Prepared bubble with stable secondary switch bubbles and automatic activity tracking")
