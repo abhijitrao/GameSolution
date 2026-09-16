@@ -141,5 +141,13 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
 
 start, end = method
 s = s[:start] + new_method + s[end:]
+
+# buildRecentAppsRow now contains both the Keep Screen On row and Recent Apps row.
+# The parent menu must wrap this container; keeping the old fixed 54dp height clips it.
+old_recent_container = "box.addView(recentApps,rowLp(dp(54),0));"
+new_recent_container = "box.addView(recentApps,rowLp(-2,0));"
+if old_recent_container in s:
+    s = s.replace(old_recent_container, new_recent_container, 1)
+
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On option patched above the recent apps row")
+print("Keep Screen On option patched above the recent apps row without clipping")
