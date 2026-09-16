@@ -55,7 +55,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   LinearLayout keepRow=new LinearLayout(this);
   keepRow.setOrientation(LinearLayout.HORIZONTAL);
   keepRow.setGravity(Gravity.CENTER_VERTICAL);
-  keepRow.setPadding(dp(14),dp(8),dp(10),dp(8));
+  keepRow.setPadding(dp(14),dp(5),dp(10),dp(5));
   keepRow.setBackground(round(card,15));
   LinearLayout copy=new LinearLayout(this);
   copy.setOrientation(LinearLayout.VERTICAL);
@@ -65,7 +65,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   keepApp.setEllipsize(android.text.TextUtils.TruncateAt.END);
   copy.addView(keepApp,new LinearLayout.LayoutParams(-1,-2));
   keepRow.addView(copy,new LinearLayout.LayoutParams(0,-2,1));
-  keepRow.addView(keepState,new LinearLayout.LayoutParams(dp(58),dp(38)));
+  keepRow.addView(keepState,new LinearLayout.LayoutParams(dp(58),dp(34)));
 
   Runnable refreshKeep=()->{
     String current=ForegroundAppResolver.getCurrentPackage(this,getPackageName());
@@ -85,8 +85,8 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
     vibrate(18);
   });
   refreshKeep.run();
-  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(62));
-  keepLp.setMargins(0,dp(8),0,0);
+  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(56));
+  keepLp.setMargins(0,dp(5),0,0);
   container.addView(keepRow,keepLp);
 
   LinearLayout row=new LinearLayout(this);
@@ -135,9 +135,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
     }
   }catch(SecurityException ignored){}catch(Exception ignored){}
   if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));
-  LinearLayout.LayoutParams recentLp=new LinearLayout.LayoutParams(-1,dp(54));
-  recentLp.setMargins(0,dp(8),0,0);
-  container.addView(row,recentLp);
+  container.addView(row,new LinearLayout.LayoutParams(-1,dp(54)));
   return container;
 }'''
 
