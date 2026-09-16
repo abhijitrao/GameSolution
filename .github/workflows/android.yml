@@ -69,6 +69,9 @@ jobs:
       - name: Patch Keep Screen On
         run: python3 tools/patch_keep_screen_on.py
 
+      - name: Patch Main Bubble Delete Zone
+        run: python3 tools/patch_main_bubble_delete.py
+
       - name: Run unit tests
         run: gradle test
 
