@@ -47,24 +47,33 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   container.setPadding(0,0,0,0);
 
   final String initialPackage=targetPackage;
+  final TextView keepIcon=label("☀",24,primary,Typeface.BOLD);
   final TextView keepTitle=label("Keep screen on for",14,text,Typeface.BOLD);
   final TextView keepState=label("OFF",12,secondary,Typeface.BOLD);
+  keepIcon.setGravity(Gravity.CENTER);
   keepTitle.setSingleLine(true);
   keepTitle.setGravity(Gravity.CENTER_VERTICAL);
   keepState.setGravity(Gravity.CENTER);
+
   LinearLayout keepRow=new LinearLayout(this);
   keepRow.setOrientation(LinearLayout.HORIZONTAL);
   keepRow.setGravity(Gravity.CENTER_VERTICAL);
-  keepRow.setPadding(dp(14),dp(5),dp(10),dp(5));
+  keepRow.setPadding(dp(10),dp(1),dp(10),dp(1));
   keepRow.setBackground(round(card,15));
+
   LinearLayout copy=new LinearLayout(this);
   copy.setOrientation(LinearLayout.VERTICAL);
+  copy.setGravity(Gravity.CENTER_VERTICAL);
   copy.addView(keepTitle);
   TextView keepApp=label(initialPackage==null?"No current app":getAppLabel(initialPackage),11,secondary,Typeface.NORMAL);
   keepApp.setSingleLine(true);
   keepApp.setEllipsize(android.text.TextUtils.TruncateAt.END);
   copy.addView(keepApp,new LinearLayout.LayoutParams(-1,-2));
-  keepRow.addView(copy,new LinearLayout.LayoutParams(0,-2,1));
+
+  keepRow.addView(keepIcon,new LinearLayout.LayoutParams(dp(54),dp(54)));
+  LinearLayout.LayoutParams copyLp=new LinearLayout.LayoutParams(0,-2,1);
+  copyLp.leftMargin=dp(8);
+  keepRow.addView(copy,copyLp);
   keepRow.addView(keepState,new LinearLayout.LayoutParams(dp(58),dp(34)));
 
   Runnable refreshKeep=()->{
@@ -85,8 +94,8 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
     vibrate(18);
   });
   refreshKeep.run();
-  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(68));
-  keepLp.setMargins(0,dp(5),0,0);
+  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(56));
+  keepLp.setMargins(0,0,0,dp(6));
   container.addView(keepRow,keepLp);
 
   LinearLayout row=new LinearLayout(this);
@@ -136,7 +145,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   }catch(SecurityException ignored){}catch(Exception ignored){}
   if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));
   LinearLayout.LayoutParams recentLp=new LinearLayout.LayoutParams(-1,dp(54));
-  recentLp.setMargins(0,dp(10),0,0);
+  recentLp.setMargins(0,0,0,dp(6));
   container.addView(row,recentLp);
   return container;
 }'''
@@ -150,4 +159,4 @@ if old_recent_container in s:
     s = s.replace(old_recent_container, new_recent_container, 1)
 
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On row uses 'Keep screen on for' + app name")
+print("Keep Screen On row matches the existing action card layout")
