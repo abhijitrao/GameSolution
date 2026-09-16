@@ -37,6 +37,27 @@ def find_method(source, signature):
     return None
 
 
+# Keep all existing action-card icons on one fixed slot and use one gap before text.
+# This is applied only to the four existing menu action rows.
+if "private void normalizeOptionRow(LinearLayout row)" not in s:
+    marker = " private LinearLayout buildRecentAppsRow()"
+    if marker not in s:
+        raise SystemExit("recent apps marker not found")
+    helper = ''' private void normalizeOptionRow(LinearLayout row){if(row==null||row.getChildCount()<2)return;View icon=row.getChildAt(0);LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(dp(54),dp(54));ip.leftMargin=dp(8);ip.rightMargin=dp(8);icon.setLayoutParams(ip);View content=row.getChildAt(1);if(content.getLayoutParams() instanceof LinearLayout.LayoutParams){LinearLayout.LayoutParams cp=(LinearLayout.LayoutParams)content.getLayoutParams();cp.leftMargin=0;content.setLayoutParams(cp);}}\n'''
+    s = s.replace(marker, helper + marker, 1)
+
+# Normalize only the existing action cards. Do not alter their click behavior or content.
+for name in ("restart", "appSettings", "live", "appInfo"):
+    needle = f"LinearLayout {name}=option("
+    pos = s.find(needle)
+    if pos >= 0:
+        end = s.find(";", pos)
+        if end >= 0:
+            statement = s[pos:end + 1]
+            call = f"normalizeOptionRow({name});"
+            if call not in s[end + 1:end + 80]:
+                s = s[:end + 1] + call + s[end + 1:]
+
 method = find_method(s, "private LinearLayout buildRecentAppsRow()")
 if method is None:
     raise SystemExit("buildRecentAppsRow method not found")
@@ -70,7 +91,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   keepApp.setEllipsize(android.text.TextUtils.TruncateAt.END);
   copy.addView(keepApp,new LinearLayout.LayoutParams(-1,-2));
 
-  keepRow.addView(keepIcon,new LinearLayout.LayoutParams(dp(48),dp(54)));
+  keepRow.addView(keepIcon,new LinearLayout.LayoutParams(dp(54),dp(54)));
   LinearLayout.LayoutParams copyLp=new LinearLayout.LayoutParams(0,-2,1);
   copyLp.leftMargin=dp(8);
   keepRow.addView(copy,copyLp);
@@ -159,4 +180,4 @@ if old_recent_container in s:
     s = s.replace(old_recent_container, new_recent_container, 1)
 
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On row aligned with existing action cards")
+print("Keep Screen On and action-card icon alignment fixed")
