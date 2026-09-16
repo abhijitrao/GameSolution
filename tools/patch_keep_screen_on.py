@@ -46,6 +46,49 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   container.setOrientation(LinearLayout.VERTICAL);
   container.setPadding(0,0,0,0);
 
+  final String initialPackage=targetPackage;
+  final TextView keepTitle=label("Keep screen on for current App",14,text,Typeface.BOLD);
+  final TextView keepState=label("OFF",12,secondary,Typeface.BOLD);
+  keepTitle.setSingleLine(false);
+  keepTitle.setGravity(Gravity.CENTER_VERTICAL);
+  keepState.setGravity(Gravity.CENTER);
+  LinearLayout keepRow=new LinearLayout(this);
+  keepRow.setOrientation(LinearLayout.HORIZONTAL);
+  keepRow.setGravity(Gravity.CENTER_VERTICAL);
+  keepRow.setPadding(dp(14),dp(8),dp(10),dp(8));
+  keepRow.setBackground(round(card,15));
+  LinearLayout copy=new LinearLayout(this);
+  copy.setOrientation(LinearLayout.VERTICAL);
+  copy.addView(keepTitle);
+  TextView keepApp=label(initialPackage==null?"No current app":getAppLabel(initialPackage),11,secondary,Typeface.NORMAL);
+  keepApp.setSingleLine(true);
+  keepApp.setEllipsize(android.text.TextUtils.TruncateAt.END);
+  copy.addView(keepApp,new LinearLayout.LayoutParams(-1,-2));
+  keepRow.addView(copy,new LinearLayout.LayoutParams(0,-2,1));
+  keepRow.addView(keepState,new LinearLayout.LayoutParams(dp(58),dp(38)));
+
+  Runnable refreshKeep=()->{
+    String current=ForegroundAppResolver.getCurrentPackage(this,getPackageName());
+    if(current==null)current=targetPackage;
+    boolean enabled=current!=null&&KeepScreenOnManager.isEnabled(this,current);
+    keepState.setText(enabled?"ON":"OFF");
+    keepState.setTextColor(enabled?Color.rgb(76,205,145):secondary);
+    keepApp.setText(current==null?"No current app":getAppLabel(current));
+  };
+  keepRow.setOnClickListener(v->{
+    String current=ForegroundAppResolver.getCurrentPackage(this,getPackageName());
+    if(current==null)current=targetPackage;
+    if(current==null||current.equals(getPackageName()))return;
+    boolean enabled=!KeepScreenOnManager.isEnabled(this,current);
+    KeepScreenOnManager.setEnabled(this,current,enabled);
+    refreshKeep.run();
+    vibrate(18);
+  });
+  refreshKeep.run();
+  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(62));
+  keepLp.setMargins(0,dp(8),0,0);
+  container.addView(keepRow,keepLp);
+
   LinearLayout row=new LinearLayout(this);
   row.setOrientation(LinearLayout.HORIZONTAL);
   row.setGravity(Gravity.CENTER_VERTICAL);
@@ -92,54 +135,13 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
     }
   }catch(SecurityException ignored){}catch(Exception ignored){}
   if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));
-  container.addView(row,new LinearLayout.LayoutParams(-1,dp(54)));
-
-  final String initialPackage=targetPackage;
-  final TextView keepTitle=label("Keep screen on for current App",14,text,Typeface.BOLD);
-  final TextView keepState=label("OFF",12,secondary,Typeface.BOLD);
-  keepTitle.setSingleLine(false);
-  keepTitle.setGravity(Gravity.CENTER_VERTICAL);
-  keepState.setGravity(Gravity.CENTER);
-  LinearLayout keepRow=new LinearLayout(this);
-  keepRow.setOrientation(LinearLayout.HORIZONTAL);
-  keepRow.setGravity(Gravity.CENTER_VERTICAL);
-  keepRow.setPadding(dp(14),dp(8),dp(10),dp(8));
-  keepRow.setBackground(round(card,15));
-  LinearLayout copy=new LinearLayout(this);
-  copy.setOrientation(LinearLayout.VERTICAL);
-  copy.addView(keepTitle);
-  TextView keepApp=label(initialPackage==null?"No current app":getAppLabel(initialPackage),11,secondary,Typeface.NORMAL);
-  keepApp.setSingleLine(true);
-  keepApp.setEllipsize(android.text.TextUtils.TruncateAt.END);
-  copy.addView(keepApp,new LinearLayout.LayoutParams(-1,-2));
-  keepRow.addView(copy,new LinearLayout.LayoutParams(0,-2,1));
-  keepRow.addView(keepState,new LinearLayout.LayoutParams(dp(58),dp(38)));
-
-  Runnable refreshKeep=()->{
-    String current=ForegroundAppResolver.getCurrentPackage(this,getPackageName());
-    if(current==null)current=targetPackage;
-    boolean enabled=current!=null&&KeepScreenOnManager.isEnabled(this,current);
-    keepState.setText(enabled?"ON":"OFF");
-    keepState.setTextColor(enabled?Color.rgb(76,205,145):secondary);
-    keepApp.setText(current==null?"No current app":getAppLabel(current));
-  };
-  keepRow.setOnClickListener(v->{
-    String current=ForegroundAppResolver.getCurrentPackage(this,getPackageName());
-    if(current==null)current=targetPackage;
-    if(current==null||current.equals(getPackageName()))return;
-    boolean enabled=!KeepScreenOnManager.isEnabled(this,current);
-    KeepScreenOnManager.setEnabled(this,current,enabled);
-    refreshKeep.run();
-    vibrate(18);
-  });
-  refreshKeep.run();
-  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(62));
-  keepLp.setMargins(0,dp(8),0,0);
-  container.addView(keepRow,keepLp);
+  LinearLayout.LayoutParams recentLp=new LinearLayout.LayoutParams(-1,dp(54));
+  recentLp.setMargins(0,dp(8),0,0);
+  container.addView(row,recentLp);
   return container;
 }'''
 
 start, end = method
 s = s[:start] + new_method + s[end:]
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On option patched into the generated bubble app list")
+print("Keep Screen On option patched above the recent apps row")
