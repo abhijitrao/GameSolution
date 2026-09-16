@@ -47,7 +47,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   container.setPadding(0,0,0,0);
 
   final String initialPackage=targetPackage;
-  final TextView keepTitle=label("Keep screen on for current App",14,text,Typeface.BOLD);
+  final TextView keepTitle=label("Keep screen on",14,text,Typeface.BOLD);
   final TextView keepState=label("OFF",12,secondary,Typeface.BOLD);
   keepTitle.setSingleLine(false);
   keepTitle.setGravity(Gravity.CENTER_VERTICAL);
@@ -144,12 +144,10 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
 start, end = method
 s = s[:start] + new_method + s[end:]
 
-# buildRecentAppsRow now contains both the Keep Screen On row and Recent Apps row.
-# The parent menu must wrap this container; keeping the old fixed 54dp height clips it.
 old_recent_container = "box.addView(recentApps,rowLp(dp(54),0));"
 new_recent_container = "box.addView(recentApps,rowLp(-2,0));"
 if old_recent_container in s:
     s = s.replace(old_recent_container, new_recent_container, 1)
 
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On label set to current App")
+print("Keep Screen On label changed to Keep screen on")
