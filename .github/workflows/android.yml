@@ -69,6 +69,23 @@ jobs:
       - name: Patch Keep Screen On
         run: python3 tools/patch_keep_screen_on.py
 
+      - name: Restore existing action-card spacing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/java/com/abhijit/gamesolution/FloatingService.java")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace("normalizeOptionRow(restart);", "")
+          s = s.replace("normalizeOptionRow(appSettings);", "")
+          s = s.replace("normalizeOptionRow(live);", "")
+          s = s.replace("normalizeOptionRow(appInfo);", "")
+          s = s.replace("final TextView keepIcon=label(\"☀\",24,primary,Typeface.BOLD);", "final TextView keepIcon=label(\"☀\",20,primary,Typeface.BOLD);")
+          s = s.replace("keepRow.setPadding(dp(10),dp(1),dp(10),dp(1));", "keepRow.setPadding(dp(8),0,dp(8),0);")
+          s = s.replace("copyLp.leftMargin=dp(8);", "copyLp.leftMargin=0;")
+          p.write_text(s, encoding="utf-8")
+          print("Restored existing action-card spacing and aligned Keep Screen On icon")
+          PY
+
       - name: Patch Main Bubble Delete Zone
         run: python3 tools/patch_main_bubble_delete.py
 
