@@ -72,6 +72,9 @@ jobs:
       - name: Patch Main Bubble Delete Zone
         run: python3 tools/patch_main_bubble_delete.py
 
+      - name: Patch main bubble drag bounds
+        run: python3 tools/patch_main_bubble_drag.py
+
       - name: Run unit tests
         run: gradle test
 
