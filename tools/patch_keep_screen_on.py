@@ -133,7 +133,9 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
     vibrate(18);
   });
   refreshKeep.run();
-  container.addView(keepRow,rowLp(-1,dp(62),0,dp(8),0,0));
+  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(62));
+  keepLp.setMargins(0,dp(8),0,0);
+  container.addView(keepRow,keepLp);
   return container;
 }'''
 
