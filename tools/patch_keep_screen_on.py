@@ -135,7 +135,9 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
     }
   }catch(SecurityException ignored){}catch(Exception ignored){}
   if(count==0)row.addView(label("No recent apps",12,secondary,Typeface.NORMAL),new LinearLayout.LayoutParams(-1,dp(54)));
-  container.addView(row,new LinearLayout.LayoutParams(-1,dp(54)));
+  LinearLayout.LayoutParams recentLp=new LinearLayout.LayoutParams(-1,dp(54));
+  recentLp.setMargins(0,dp(10),0,0);
+  container.addView(row,recentLp);
   return container;
 }'''
 
@@ -150,4 +152,4 @@ if old_recent_container in s:
     s = s.replace(old_recent_container, new_recent_container, 1)
 
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On option patched above recent apps row without clipping")
+print("Keep Screen On option patched above recent apps row with visible spacing")
