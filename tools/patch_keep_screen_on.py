@@ -85,7 +85,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
     vibrate(18);
   });
   refreshKeep.run();
-  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(56));
+  LinearLayout.LayoutParams keepLp=new LinearLayout.LayoutParams(-1,dp(68));
   keepLp.setMargins(0,dp(5),0,0);
   container.addView(keepRow,keepLp);
 
@@ -150,4 +150,4 @@ if old_recent_container in s:
     s = s.replace(old_recent_container, new_recent_container, 1)
 
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On option patched above the recent apps row without clipping")
+print("Keep Screen On option patched above recent apps row without clipping")
