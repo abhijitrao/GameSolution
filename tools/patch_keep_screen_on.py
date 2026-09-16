@@ -48,7 +48,7 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
 
   final String initialPackage=targetPackage;
   final TextView keepIcon=label("☀",24,primary,Typeface.BOLD);
-  final TextView keepTitle=label("Keep screen on for",14,text,Typeface.BOLD);
+  final TextView keepTitle=label("Keep screen on for",13,text,Typeface.BOLD);
   final TextView keepState=label("OFF",12,secondary,Typeface.BOLD);
   keepIcon.setGravity(Gravity.CENTER);
   keepTitle.setSingleLine(true);
@@ -70,11 +70,11 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   keepApp.setEllipsize(android.text.TextUtils.TruncateAt.END);
   copy.addView(keepApp,new LinearLayout.LayoutParams(-1,-2));
 
-  keepRow.addView(keepIcon,new LinearLayout.LayoutParams(dp(54),dp(54)));
+  keepRow.addView(keepIcon,new LinearLayout.LayoutParams(dp(48),dp(54)));
   LinearLayout.LayoutParams copyLp=new LinearLayout.LayoutParams(0,-2,1);
   copyLp.leftMargin=dp(8);
   keepRow.addView(copy,copyLp);
-  keepRow.addView(keepState,new LinearLayout.LayoutParams(dp(58),dp(34)));
+  keepRow.addView(keepState,new LinearLayout.LayoutParams(dp(52),dp(34)));
 
   Runnable refreshKeep=()->{
     String current=ForegroundAppResolver.getCurrentPackage(this,getPackageName());
@@ -159,4 +159,4 @@ if old_recent_container in s:
     s = s.replace(old_recent_container, new_recent_container, 1)
 
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On row matches the existing action card layout")
+print("Keep Screen On row aligned with existing action cards")
