@@ -47,9 +47,9 @@ new_method = '''private LinearLayout buildRecentAppsRow(){
   container.setPadding(0,0,0,0);
 
   final String initialPackage=targetPackage;
-  final TextView keepTitle=label("Keep screen on",14,text,Typeface.BOLD);
+  final TextView keepTitle=label("Keep screen on for",14,text,Typeface.BOLD);
   final TextView keepState=label("OFF",12,secondary,Typeface.BOLD);
-  keepTitle.setSingleLine(false);
+  keepTitle.setSingleLine(true);
   keepTitle.setGravity(Gravity.CENTER_VERTICAL);
   keepState.setGravity(Gravity.CENTER);
   LinearLayout keepRow=new LinearLayout(this);
@@ -150,4 +150,4 @@ if old_recent_container in s:
     s = s.replace(old_recent_container, new_recent_container, 1)
 
 SERVICE.write_text(s, encoding="utf-8")
-print("Keep Screen On label changed to Keep screen on")
+print("Keep Screen On row uses 'Keep screen on for' + app name")
