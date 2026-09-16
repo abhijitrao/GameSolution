@@ -5,12 +5,6 @@ SERVICE = ROOT / "FloatingService.java"
 
 s = SERVICE.read_text(encoding="utf-8")
 
-if "KeepScreenOnManager" not in s:
-    marker = "private WindowManager windowManager;"
-    if marker not in s:
-        raise SystemExit("FloatingService windowManager marker not found")
-    s = s.replace(marker, marker + "private KeepScreenOnManager keepScreenOnManager;", 1)
-
 if "KeepScreenOnManager.start(this);" not in s:
     marker = "super.onCreate();"
     if marker not in s:
