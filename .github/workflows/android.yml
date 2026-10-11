@@ -98,16 +98,27 @@ jobs:
       - name: Run Android Lint
         run: gradle lint
 
-      # Always build the release variant; never generate a debug APK artifact.
-      # Pull-request builds are unsigned because signing secrets are not exposed to PR workflows.
-      - name: Build release APK
-        run: gradle assembleRelease
+      # PRs run tests/lint only. Signed APKs are built on branch pushes,
+      # where repository signing secrets are available.
+      - name: Build signed release APK
+        if: github.event_name != 'pull_request'
+        run: |
+          set -e
+          gradle assembleRelease
+          APK="app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK" ]; then
+            echo "Expected signed APK not found: $APK"
+            echo "Refusing to publish an unsigned APK."
+            exit 1
+          fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
 
-      - name: Upload release APK
+      - name: Upload signed release APK
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: GameSolution-release-${{ github.sha }}
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
       - name: Create GitHub Release with APK
