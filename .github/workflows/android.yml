@@ -98,24 +98,12 @@ jobs:
       - name: Run Android Lint
         run: gradle lint
 
-      - name: Build debug APK for pull requests
-        if: github.event_name == 'pull_request'
-        run: gradle assembleDebug
-
-      - name: Upload debug APK
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: GameSolution-debug-${{ github.sha }}
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-
-      - name: Build signed release APK
-        if: github.event_name != 'pull_request'
+      # Always build the release variant; never generate a debug APK artifact.
+      # Pull-request builds are unsigned because signing secrets are not exposed to PR workflows.
+      - name: Build release APK
         run: gradle assembleRelease
 
       - name: Upload release APK
-        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: GameSolution-release-${{ github.sha }}
