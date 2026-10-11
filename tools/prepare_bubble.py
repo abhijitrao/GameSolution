@@ -70,6 +70,18 @@ new_recent = ''' private LinearLayout buildRecentAppsRow(){LinearLayout row=new 
 if old_recent not in s: raise SystemExit("recent apps implementation not found")
 s = s.replace(old_recent, new_recent, 1)
 
+# Add Private DNS as a main floating-bubble action, not as an item in the recent-app icon row.
+dns_action_marker = 'appInfo.setOnClickListener(v->{vibrate(20);AppDetailInfoDialog.show(this,targetPackage,windowManager,menuView,this::removeMenu);});LinearLayout recentApps=buildRecentAppsRow();'
+dns_action_replacement = '''appInfo.setOnClickListener(v->{vibrate(20);AppDetailInfoDialog.show(this,targetPackage,windowManager,menuView,this::removeMenu);});LinearLayout dns=new LinearLayout(this);dns.setOrientation(LinearLayout.HORIZONTAL);dns.setGravity(Gravity.CENTER_VERTICAL);dns.setPadding(dp(10),0,dp(12),0);dns.setBackground(round(card,15));TextView dnsIcon=label("◈",22,primary,Typeface.BOLD);dnsIcon.setGravity(Gravity.CENTER);dns.addView(dnsIcon,new LinearLayout.LayoutParams(dp(38),-1));LinearLayout dnsText=new LinearLayout(this);dnsText.setOrientation(LinearLayout.VERTICAL);dnsText.setGravity(Gravity.CENTER_VERTICAL);dnsText.addView(label("Private DNS / Ad Blocking",14,text,Typeface.BOLD));dnsText.addView(label("Manage DNS for "+getAppLabel(targetPackage),11,secondary,Typeface.NORMAL));dns.addView(dnsText,new LinearLayout.LayoutParams(0,-1,1));TextView dnsState=label(isPrivateDnsOn()?"ON":"OFF",14,isPrivateDnsOn()?primary:secondary,Typeface.BOLD);dnsState.setGravity(Gravity.CENTER);dns.addView(dnsState,new LinearLayout.LayoutParams(dp(42),-1));box.addView(dns,rowLp(dp(64),dp(6)));dns.setOnClickListener(v->{vibrate(20);String p=targetPackage;removeMenu();startPrivateDnsTracking(p);});LinearLayout recentApps=buildRecentAppsRow();'''
+if dns_action_marker not in s: raise SystemExit("main bubble action insertion marker not found")
+s = s.replace(dns_action_marker, dns_action_replacement, 1)
+dns_helper = ''' private boolean isPrivateDnsOn(){try{String mode=android.provider.Settings.Global.getString(getContentResolver(),"private_dns_mode");return mode!=null&&!mode.equalsIgnoreCase("off");}catch(Exception e){return false;}}\n private void startPrivateDnsTracking(String packageName){if(packageName==null||packageName.isEmpty()||packageName.equals(getPackageName()))return;try{Intent i=new Intent(this,PrivateDnsMonitorService.class);i.setAction("com.abhijit.gamesolution.TRACK_PRIVATE_DNS_PACKAGE");i.putExtra("package_name",packageName);if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O)startForegroundService(i);else startService(i);}catch(Exception e){Toast.makeText(this,"Unable to start Private DNS tracking",Toast.LENGTH_LONG).show();}}\n'''
+if 'private void startPrivateDnsTracking(' not in s:
+    marker = ' private void showBubbleSettings()'
+    if marker not in s: raise SystemExit("FloatingService helper insertion marker not found")
+    s = s.replace(marker, dns_helper + marker, 1)
+
+
 # Secondary bubbles are owned by the service but rendered independently of the main bubble.
 secondary = '''\nmb = new MultiBubbleManager(this, windowManager);\nif (BubbleSettings.isRecentAppBubbleEnabled(this)) { String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName()); if(rp!=null) mb.showRecentApp(rp); }\nLiveMonitorDialog.setActivitySwitchCallback((pkg,activity)->{ if(BubbleSettings.isActivitySwitchBubbleEnabled(this) && mb!=null) mb.showActivity(pkg,activity); });\n'''
 s = s.replace('windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);', 'windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);' + secondary, 1)
