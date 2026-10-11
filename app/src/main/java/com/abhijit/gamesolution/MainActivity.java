@@ -52,8 +52,8 @@ public class MainActivity extends Activity {
         addAction("Usage access", "Used only to identify the current app", hasUsageAccess(), v -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
         addAction("Background operation", "Helps keep the floating utility alive", isIgnoringBatteryOptimizations(), v -> requestBatteryOptimizationExemption());
         addAction("Notifications", "Required for foreground-service status", hasNotificationPermission(), v -> requestNotificationPermission());
+        addAction("Clear DNS-enabled app list", "Remove all saved app package names", getTrackedDnsAppCount() == 0, v -> confirmClearDnsEnabledApps());
 
-        addAction("TEST: Private DNS navigation", "Temporary test menu — remove after testing", false, v -> showPrivateDnsIntentTest());
 
         TextView actions = text("QUICK ACTION", 11, secondary, Typeface.BOLD); actions.setLetterSpacing(.12f); root.addView(actions, lp(-1, -2, 0, dp(10), 0, 8));
         Button start = button("START FLOATING BUBBLE", primary); start.setEnabled(Settings.canDrawOverlays(this) && hasUsageAccess()); start.setOnClickListener(v -> startFloatingService()); root.addView(start, lp(-1, dp(54), 0, 0, 0, 10));
@@ -64,6 +64,28 @@ public class MainActivity extends Activity {
 
     private void addToggle(String title, String desc, boolean checked, final ToggleCallback callback) { LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(dp(16), dp(12), dp(10), dp(12)); item.setBackground(round(card, 16)); LinearLayout copy = new LinearLayout(this); copy.setOrientation(LinearLayout.VERTICAL); TextView t = text(title, 15, text, Typeface.BOLD); TextView d = text(desc, 12, secondary, Typeface.NORMAL); d.setPadding(0, dp(3), 0, 0); copy.addView(t); copy.addView(d); item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1)); Switch sw = new Switch(this); sw.setChecked(checked); sw.setOnCheckedChangeListener((buttonView, isChecked) -> callback.onChanged(isChecked)); item.addView(sw, new LinearLayout.LayoutParams(dp(56), -2)); item.setOnClickListener(v -> sw.setChecked(!sw.isChecked())); root.addView(item, lp(-1, -2, 0, 0, 0, 8)); }
     private interface ToggleCallback { void onChanged(boolean enabled); }
+    private int getTrackedDnsAppCount() {
+        java.util.Set<String> apps = getSharedPreferences("private_dns_settings", MODE_PRIVATE)
+                .getStringSet("tracked_packages", java.util.Collections.<String>emptySet());
+        return apps == null ? 0 : apps.size();
+    }
+
+    private void confirmClearDnsEnabledApps() {
+        new AlertDialog.Builder(this)
+                .setTitle("Clear DNS-enabled app list?")
+                .setMessage("This removes all saved app package names from GameSolution. It will not change the device's current Private DNS setting.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Clear list", (dialog, which) -> {
+                    getSharedPreferences("private_dns_settings", MODE_PRIVATE).edit()
+                            .remove("tracked_packages")
+                            .remove("pending_enable_package")
+                            .apply();
+                    Toast.makeText(this, "DNS-enabled app list cleared", Toast.LENGTH_SHORT).show();
+                    recreate();
+                })
+                .show();
+    }
+
     private void addAction(String title, String desc, boolean ready, View.OnClickListener listener) { LinearLayout item = new LinearLayout(this); item.setGravity(Gravity.CENTER_VERTICAL); item.setPadding(dp(16), dp(12), dp(12), dp(12)); item.setBackground(round(card, 16)); LinearLayout copy = new LinearLayout(this); copy.setOrientation(LinearLayout.VERTICAL); TextView t = text(title, 15, text, Typeface.BOLD); TextView d = text(desc, 12, secondary, Typeface.NORMAL); d.setPadding(0, dp(3), 0, 0); copy.addView(t); copy.addView(d); item.addView(copy, new LinearLayout.LayoutParams(0, -2, 1)); TextView state = text(ready ? "READY" : "OPEN", 11, ready ? success : primary, Typeface.BOLD); state.setGravity(Gravity.CENTER); state.setPadding(dp(10), 0, dp(4), 0); item.addView(state, new LinearLayout.LayoutParams(dp(62), -1)); item.setOnClickListener(listener); root.addView(item, lp(-1, -2, 0, 0, 0, 8)); }
     private LinearLayout statusRow(String name, boolean ready) { LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(0, dp(10), 0, 0); TextView n = text(name, 14, text, Typeface.NORMAL); row.addView(n, new LinearLayout.LayoutParams(0, -2, 1)); row.addView(text(ready ? "● READY" : "● REQUIRED", 12, ready ? success : Color.rgb(255, 184, 92), Typeface.BOLD)); return row; }
     private LinearLayout card() { LinearLayout c = new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL); c.setPadding(dp(16), dp(16), dp(16), dp(16)); c.setBackground(round(card2, 18)); return c; }
@@ -314,5 +336,5 @@ public class MainActivity extends Activity {
         showExitDnsPrompt(this::finish);
     }
     private void updateSecondaryBubbleService() { if (!Settings.canDrawOverlays(this) || !hasUsageAccess()) return; boolean enabled = BubbleSettings.isRecentAppBubbleEnabled(this) || BubbleSettings.isActivitySwitchBubbleEnabled(this); Intent intent = new Intent(this, SecondaryBubbleService.class); if (enabled) { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); } else { stopService(intent); } }
-    private void startFloatingService() { if (!Settings.canDrawOverlays(this)) { openOverlaySettings(); return; } if (!hasUsageAccess()) { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; } requestNotificationPermission(); BubbleSettings.setBubbleEnabled(this, true); Intent intent = new Intent(this, FloatingService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); updateSecondaryBubbleService(); try { Intent monitor = new Intent(this, PrivateDnsMonitorService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor); else startService(monitor); } catch (Exception ignored) {} }
+    private void startFloatingService() { if (!Settings.canDrawOverlays(this)) { openOverlaySettings(); return; } if (!hasUsageAccess()) { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; } requestNotificationPermission(); BubbleSettings.setBubbleEnabled(this, true); Intent intent = new Intent(this, FloatingService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); updateSecondaryBubbleService(); try { Intent monitor = new Intent(this, PrivateDnsMonitorService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor); else startService(monitor); } catch (Exception ignored) {} showExitDnsPrompt(this::finishAndRemoveTask); }
 }
