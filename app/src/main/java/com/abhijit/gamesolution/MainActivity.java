@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
         TextView privacy = text("PRIVACY & AD BLOCKING", 11, secondary, Typeface.BOLD); privacy.setLetterSpacing(.12f); root.addView(privacy, lp(-1, -2, 0, dp(10), 0, 8));
         String dnsHost = getPrivateDnsHostname();
         addAction("Private DNS / Ad Blocking", "All apps • " + dnsHost, isPrivateDnsSetupStarted(), v -> showEnableDnsGuide());
+        addAction("TEST: Private DNS navigation", "Temporary test menu — remove after testing", false, v -> showPrivateDnsIntentTest());
 
         TextView actions = text("QUICK ACTION", 11, secondary, Typeface.BOLD); actions.setLetterSpacing(.12f); root.addView(actions, lp(-1, -2, 0, dp(10), 0, 8));
         Button start = button("START FLOATING BUBBLE", primary); start.setEnabled(Settings.canDrawOverlays(this) && hasUsageAccess()); start.setOnClickListener(v -> startFloatingService()); root.addView(start, lp(-1, dp(54), 0, 0, 0, 10));
@@ -255,6 +256,59 @@ public class MainActivity extends Activity {
                 "Private DNS screen could not be opened automatically on this device. Open Settings > Network > Private DNS manually.",
                 Toast.LENGTH_LONG).show();
     }
+    // TEMPORARY: test different Settings routes, then remove this action and method.
+    private void showPrivateDnsIntentTest() {
+        final String[] labels = {
+                "1. PRIVATE_DNS_SETTINGS (direct)",
+                "2. Settings + PrivateDnsSettings fragment",
+                "3. Settings + network.PrivateDnsSettings fragment",
+                "4. Settings + NetworkDashboardActivity",
+                "5. Settings + NetworkDashboardFragment",
+                "6. WIRELESS_SETTINGS",
+                "7. NETWORK_OPERATOR_SETTINGS",
+                "8. WIFI_SETTINGS",
+                "9. INTERNET_CONNECTIVITY_SETTINGS",
+                "10. DATA_USAGE_SETTINGS",
+                "11. SETTINGS (general)",
+                "12. Network settings via action string",
+                "13. Settings + old NetworkDashboardSummary fragment",
+                "14. Settings + NetworkDashboardActivity fragment"
+        };
+        final int[] selected = {0};
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("TEST — Private DNS routes")
+                .setSingleChoiceItems(labels, 0, (d, which) -> selected[0] = which)
+                .setPositiveButton("TRY SELECTED", null)
+                .setNegativeButton("CLOSE", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            Intent intent;
+            switch (selected[0]) {
+                case 0: intent = new Intent("android.settings.PRIVATE_DNS_SETTINGS"); break;
+                case 1: intent = new Intent(Settings.ACTION_SETTINGS).putExtra(":settings:show_fragment", "com.android.settings.network.PrivateDnsSettings").putExtra(":settings:show_fragment_title", "Private DNS"); break;
+                case 2: intent = new Intent(Settings.ACTION_SETTINGS).putExtra(":settings:show_fragment", "com.android.settings.network.PrivateDnsSettings"); break;
+                case 3: intent = new Intent(Settings.ACTION_SETTINGS).putExtra(":settings:show_fragment", "com.android.settings.network.NetworkDashboardActivity"); break;
+                case 4: intent = new Intent(Settings.ACTION_SETTINGS).putExtra(":settings:show_fragment", "com.android.settings.network.NetworkDashboardFragment"); break;
+                case 5: intent = new Intent(Settings.ACTION_WIRELESS_SETTINGS); break;
+                case 6: intent = new Intent(Settings.ACTION_NETWORK_OPERATOR_SETTINGS); break;
+                case 7: intent = new Intent(Settings.ACTION_WIFI_SETTINGS); break;
+                case 8: intent = new Intent("android.settings.INTERNET_CONNECTIVITY"); break;
+                case 9: intent = new Intent(Settings.ACTION_DATA_USAGE_SETTINGS); break;
+                case 10: intent = new Intent(Settings.ACTION_SETTINGS); break;
+                case 11: intent = new Intent("android.settings.NETWORK_SETTINGS"); break;
+                case 12: intent = new Intent(Settings.ACTION_SETTINGS).putExtra(":settings:show_fragment", "com.android.settings.network.NetworkDashboardSummary"); break;
+                default: intent = new Intent(Settings.ACTION_SETTINGS).putExtra(":settings:show_fragment", "com.android.settings.network.NetworkDashboardActivity"); break;
+            }
+            try {
+                startActivity(intent);
+                Toast.makeText(this, "Launched route " + (selected[0] + 1) + ". Check the screen, then return and test another.", Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Route " + (selected[0] + 1) + " failed: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+            }
+        }));
+        dialog.show();
+    }
+
     private void showExitDnsPrompt(Runnable exitAction) {
         if (!isPrivateDnsSetupStarted() || Build.VERSION.SDK_INT < 28) {
             exitAction.run();
