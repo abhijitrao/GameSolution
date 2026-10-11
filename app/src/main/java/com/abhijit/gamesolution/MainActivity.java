@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
         TextView title = text("Restart apps\nwithout the hassle.", 30, text, Typeface.BOLD); title.setPadding(0, dp(8), 0, dp(8)); root.addView(title);
         TextView subtitle = text("A lightweight floating utility for quickly relaunching the app currently in use.", 15, secondary, Typeface.NORMAL); subtitle.setLineSpacing(0, 1.12f); root.addView(subtitle, lp(-1, -2, 0, 0, 0, 18));
 
-        LinearLayout statusCard = card(); statusCard.addView(text("SYSTEM STATUS", 11, secondary, Typeface.BOLD)); statusCard.addView(statusRow("Overlay permission", Settings.canDrawOverlays(this))); statusCard.addView(statusRow("Usage access", hasUsageAccess())); statusCard.addView(statusRow("Battery optimization", isIgnoringBatteryOptimizations())); statusCard.addView(statusRow("Notifications", hasNotificationPermission())); root.addView(statusCard, lp(-1, -2, 0, 0, 0, 18));
+        LinearLayout statusCard = card(); statusCard.addView(text("SYSTEM STATUS", 11, secondary, Typeface.BOLD)); statusCard.addView(statusRow("Overlay permission", Settings.canDrawOverlays(this))); statusCard.addView(statusRow("Usage access", hasUsageAccess())); statusCard.addView(statusRow("Battery optimization", isIgnoringBatteryOptimizations())); statusCard.addView(statusRow("Notifications", hasNotificationPermission())); statusCard.addView(privateDnsStatusRow()); root.addView(statusCard, lp(-1, -2, 0, 0, 0, 18));
 
         TextView setup = text("SETUP", 11, secondary, Typeface.BOLD); setup.setLetterSpacing(.12f); root.addView(setup, lp(-1, -2, 0, 0, 0, 8));
         addAction("Allow Restricted Settings", "Required for sideloaded apps on Android 13+", !isRestrictedSettingReady(), v -> openRestrictedSettingsHelp());
@@ -84,6 +84,71 @@ public class MainActivity extends Activity {
     private void openOverlaySettings() { startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); }
     private String getPrivateDnsHostname() {
         return getSharedPreferences("private_dns_settings", MODE_PRIVATE).getString("hostname", "dns.adguard.com");
+    }
+
+    private String getSystemPrivateDnsMode() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return "unsupported";
+        try {
+            String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
+            return mode == null ? "unknown" : mode.toLowerCase(java.util.Locale.ROOT);
+        } catch (Exception ignored) {
+            return "unknown";
+        }
+    }
+
+    private String getSystemPrivateDnsSpecifier() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return "";
+        try {
+            String host = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
+            return host == null ? "" : host.trim();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private LinearLayout privateDnsStatusRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(10), 0, 0);
+        TextView label = text("Private DNS", 14, text, Typeface.NORMAL);
+        row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+        String mode = getSystemPrivateDnsMode();
+        String configuredHost = getSystemPrivateDnsSpecifier();
+        String status;
+        int color;
+        if ("unsupported".equals(mode)) {
+            status = "UNSUPPORTED";
+            color = secondary;
+        } else if ("off".equals(mode)) {
+            status = "DISABLED";
+            color = Color.rgb(255, 184, 92);
+        } else if ("hostname".equals(mode)) {
+            if (configuredHost.equalsIgnoreCase(getPrivateDnsHostname())) {
+                status = "ON • ADGUARD";
+                color = success;
+            } else if (!configuredHost.isEmpty()) {
+                status = "ON • OTHER PROVIDER";
+                color = Color.rgb(255, 184, 92);
+            } else {
+                status = "ON • HOSTNAME";
+                color = Color.rgb(255, 184, 92);
+            }
+        } else if ("opportunistic".equals(mode)) {
+            status = "ON • AUTOMATIC";
+            color = success;
+        } else {
+            status = "STATUS UNKNOWN";
+            color = Color.rgb(255, 184, 92);
+        }
+        TextView value = text(status, 12, color, Typeface.BOLD);
+        value.setGravity(Gravity.CENTER);
+        row.addView(value);
+        if ("hostname".equals(mode) && !configuredHost.isEmpty() && !configuredHost.equalsIgnoreCase(getPrivateDnsHostname())) {
+            TextView host = text("\\n" + configuredHost, 11, secondary, Typeface.NORMAL);
+            host.setGravity(Gravity.END);
+            row.addView(host);
+        }
+        return row;
     }
     private boolean isPrivateDnsSetupStarted() {
         return getSharedPreferences("private_dns_settings", MODE_PRIVATE).getBoolean("setup_started", false);
@@ -160,7 +225,7 @@ public class MainActivity extends Activity {
                 }).setNegativeButton("Cancel", null).show();
     }
     private void openPrivateDnsSettings(boolean enabling) {
-        if (Build.VERSION.SDK_INT < 28) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             showPrivateDnsOptions();
             return;
         }
@@ -169,11 +234,24 @@ public class MainActivity extends Activity {
             Intent monitor = new Intent(this, PrivateDnsMonitorService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor); else startService(monitor);
         } catch (Exception ignored) {}
-        try {
-            startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS"));
-        } catch (Exception e) {
-            try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) {}
+
+        String[] actions = {
+                "android.settings.PRIVATE_DNS_SETTINGS",
+                Settings.ACTION_WIRELESS_SETTINGS,
+                Settings.ACTION_SETTINGS
+        };
+        for (String action : actions) {
+            try {
+                Intent intent = new Intent(action);
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(intent);
+                    return;
+                }
+            } catch (Exception ignored) {
+                // Try the next Settings screen supported by this device.
+            }
         }
+        Toast.makeText(this, "Could not open Settings. Please open Settings > Network manually.", Toast.LENGTH_LONG).show();
     }
     private void showExitDnsPrompt(Runnable exitAction) {
         if (!isPrivateDnsSetupStarted() || Build.VERSION.SDK_INT < 28) {
