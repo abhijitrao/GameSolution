@@ -242,11 +242,10 @@ public class MainActivity extends Activity {
         };
         for (String action : actions) {
             try {
-                Intent intent = new Intent(action);
-                if (intent.resolveActivity(getPackageManager()) != null) {
-                    startActivity(intent);
-                    return;
-                }
+                // Launch directly instead of resolveActivity(): package visibility can make
+                // resolveActivity return null for system Settings screens on Android 11+.
+                startActivity(new Intent(action));
+                return;
             } catch (Exception ignored) {
                 // Try the next Settings screen supported by this device.
             }
