@@ -18,6 +18,9 @@ import android.view.View;
 import android.text.InputType;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.widget.Toast;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -95,10 +98,45 @@ public class MainActivity extends Activity {
         String[] options = {"Enable / Configure", "Change provider hostname", "Disable Private DNS"};
         new AlertDialog.Builder(this).setTitle("Private DNS / Ad Blocking")
                 .setItems(options, (dialog, which) -> {
-                    if (which == 0) openPrivateDnsSettings(true);
+                    if (which == 0) showEnableDnsGuide();
                     else if (which == 1) editPrivateDnsHostname();
                     else openPrivateDnsSettings(false);
                 }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void showEnableDnsGuide() {
+        String hostname = getPrivateDnsHostname();
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(8), dp(20), dp(4));
+        TextView intro = text("To enable ad blocking for all apps, enter this hostname in Android Private DNS settings.", 14, text, Typeface.NORMAL);
+        intro.setLineSpacing(0, 1.1f);
+        content.addView(intro, lp(-1, -2, 0, 0, 0, 12));
+        LinearLayout hostRow = new LinearLayout(this);
+        hostRow.setGravity(Gravity.CENTER_VERTICAL);
+        hostRow.setPadding(dp(12), dp(8), dp(6), dp(8));
+        hostRow.setBackground(round(card, 12));
+        TextView host = text(hostname, 14, text, Typeface.BOLD);
+        hostRow.addView(host, new LinearLayout.LayoutParams(0, -2, 1));
+        Button copy = button("COPY", primary);
+        copy.setMinHeight(dp(40));
+        copy.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(ClipData.newPlainText("Private DNS hostname", hostname));
+                Toast.makeText(this, "Hostname copied", Toast.LENGTH_SHORT).show();
+            }
+        });
+        hostRow.addView(copy, new LinearLayout.LayoutParams(dp(86), dp(42)));
+        content.addView(hostRow, lp(-1, -2, 0, 0, 0, 14));
+        TextView guide = text("Steps:\\n1. Tap Open Settings below.\\n2. Select Private DNS provider hostname.\\n3. Paste the hostname shown above.\\n4. Tap Save.\\n\\nPrivate DNS affects all apps.", 13, secondary, Typeface.NORMAL);
+        guide.setLineSpacing(dp(3), 1f);
+        content.addView(guide);
+        new AlertDialog.Builder(this).setTitle("Enable Ad Blocking")
+                .setView(content)
+                .setPositiveButton("Open Settings", (dialog, which) -> openPrivateDnsSettings(true))
+                .setNegativeButton("Cancel", null)
+                .show();
     }
     private void editPrivateDnsHostname() {
         EditText input = new EditText(this);
