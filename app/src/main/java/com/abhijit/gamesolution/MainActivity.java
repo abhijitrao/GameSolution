@@ -2,6 +2,7 @@ package com.abhijit.gamesolution;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -14,8 +15,10 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
+import android.text.InputType;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -47,6 +50,10 @@ public class MainActivity extends Activity {
         addAction("Background operation", "Helps keep the floating utility alive", isIgnoringBatteryOptimizations(), v -> requestBatteryOptimizationExemption());
         addAction("Notifications", "Required for foreground-service status", hasNotificationPermission(), v -> requestNotificationPermission());
 
+        TextView privacy = text("PRIVACY & AD BLOCKING", 11, secondary, Typeface.BOLD); privacy.setLetterSpacing(.12f); root.addView(privacy, lp(-1, -2, 0, dp(10), 0, 8));
+        String dnsHost = getPrivateDnsHostname();
+        addAction("Private DNS / Ad Blocking", "All apps • " + dnsHost, isPrivateDnsSetupStarted(), v -> showPrivateDnsOptions());
+
         TextView actions = text("QUICK ACTION", 11, secondary, Typeface.BOLD); actions.setLetterSpacing(.12f); root.addView(actions, lp(-1, -2, 0, dp(10), 0, 8));
         Button start = button("START FLOATING BUBBLE", primary); start.setEnabled(Settings.canDrawOverlays(this) && hasUsageAccess()); start.setOnClickListener(v -> startFloatingService()); root.addView(start, lp(-1, dp(54), 0, 0, 0, 10));
         TextView hint = text("Once started, the bubble stays above other apps. Tap it to open Restart App and App Settings.", 13, secondary, Typeface.NORMAL); hint.setGravity(Gravity.CENTER); root.addView(hint, lp(-1, -2, 0, 4, 0, 0));
@@ -72,6 +79,78 @@ public class MainActivity extends Activity {
     private void requestBatteryOptimizationExemption() { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { try { startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName()))); } catch (Exception e) { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); } } }
     private void requestNotificationPermission() { if (Build.VERSION.SDK_INT >= 33 && !hasNotificationPermission()) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS); }
     private void openOverlaySettings() { startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); }
+    private String getPrivateDnsHostname() {
+        return getSharedPreferences("private_dns_settings", MODE_PRIVATE).getString("hostname", "dns.adguard.com");
+    }
+    private boolean isPrivateDnsSetupStarted() {
+        return getSharedPreferences("private_dns_settings", MODE_PRIVATE).getBoolean("setup_started", false);
+    }
+    private void showPrivateDnsOptions() {
+        if (Build.VERSION.SDK_INT < 28) {
+            new AlertDialog.Builder(this).setTitle("Private DNS not supported")
+                    .setMessage("System Private DNS requires Android 9 or newer. This device cannot use this feature.")
+                    .setPositiveButton("OK", null).show();
+            return;
+        }
+        String[] options = {"Enable / Configure", "Change provider hostname", "Disable Private DNS"};
+        new AlertDialog.Builder(this).setTitle("Private DNS / Ad Blocking")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) openPrivateDnsSettings(true);
+                    else if (which == 1) editPrivateDnsHostname();
+                    else openPrivateDnsSettings(false);
+                }).setNegativeButton("Cancel", null).show();
+    }
+    private void editPrivateDnsHostname() {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        input.setText(getPrivateDnsHostname());
+        input.setSelection(input.getText().length());
+        new AlertDialog.Builder(this).setTitle("Provider hostname")
+                .setMessage("Enter the Private DNS provider hostname.")
+                .setView(input)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String hostname = input.getText().toString().trim();
+                    if (hostname.isEmpty() || hostname.contains(" ") || hostname.contains("/")) {
+                        new AlertDialog.Builder(this).setTitle("Invalid hostname")
+                                .setMessage("Enter a valid hostname, for example dns.adguard.com.")
+                                .setPositiveButton("OK", null).show();
+                        return;
+                    }
+                    getSharedPreferences("private_dns_settings", MODE_PRIVATE).edit().putString("hostname", hostname).apply();
+                    showUi();
+                }).setNegativeButton("Cancel", null).show();
+    }
+    private void openPrivateDnsSettings(boolean enabling) {
+        if (Build.VERSION.SDK_INT < 28) {
+            showPrivateDnsOptions();
+            return;
+        }
+        if (enabling) getSharedPreferences("private_dns_settings", MODE_PRIVATE).edit().putBoolean("setup_started", true).apply();
+        try {
+            startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS"));
+        } catch (Exception e) {
+            try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) {}
+        }
+    }
+    private void showExitDnsPrompt(Runnable exitAction) {
+        if (!isPrivateDnsSetupStarted() || Build.VERSION.SDK_INT < 28) {
+            exitAction.run();
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Ad Blocking")
+                .setMessage("Keep Private DNS enabled for all apps, or open Android Settings to disable it?")
+                .setPositiveButton("Disable", (dialog, which) -> {
+                    openPrivateDnsSettings(false);
+                    exitAction.run();
+                })
+                .setNegativeButton("Keep Enabled", (dialog, which) -> exitAction.run())
+                .setNeutralButton("Cancel", null)
+                .show();
+    }
+    @Override public void onBackPressed() {
+        showExitDnsPrompt(this::finish);
+    }
     private void updateSecondaryBubbleService() { if (!Settings.canDrawOverlays(this) || !hasUsageAccess()) return; boolean enabled = BubbleSettings.isRecentAppBubbleEnabled(this) || BubbleSettings.isActivitySwitchBubbleEnabled(this); Intent intent = new Intent(this, SecondaryBubbleService.class); if (enabled) { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); } else { stopService(intent); } }
-    private void startFloatingService() { if (!Settings.canDrawOverlays(this)) { openOverlaySettings(); return; } if (!hasUsageAccess()) { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; } requestNotificationPermission(); BubbleSettings.setBubbleEnabled(this, true); Intent intent = new Intent(this, FloatingService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); updateSecondaryBubbleService(); finishAndRemoveTask(); }
+    private void startFloatingService() { if (!Settings.canDrawOverlays(this)) { openOverlaySettings(); return; } if (!hasUsageAccess()) { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; } requestNotificationPermission(); BubbleSettings.setBubbleEnabled(this, true); Intent intent = new Intent(this, FloatingService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); updateSecondaryBubbleService(); showExitDnsPrompt(this::finishAndRemoveTask); }
 }
