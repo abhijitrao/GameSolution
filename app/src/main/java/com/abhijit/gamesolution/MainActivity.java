@@ -260,8 +260,9 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("Ad Blocking")
                 .setMessage("Keep Private DNS enabled for all apps, or open Android Settings to disable it?")
                 .setPositiveButton("Disable", (dialog, which) -> {
+                    // Keep the task alive while Android Settings opens; finishing immediately
+                    // can interrupt navigation on some devices.
                     openPrivateDnsSettings(false);
-                    exitAction.run();
                 })
                 .setNegativeButton("Keep Enabled", (dialog, which) -> exitAction.run())
                 .setNeutralButton("Cancel", null)
