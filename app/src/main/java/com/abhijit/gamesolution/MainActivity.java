@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
 
         TextView privacy = text("PRIVACY & AD BLOCKING", 11, secondary, Typeface.BOLD); privacy.setLetterSpacing(.12f); root.addView(privacy, lp(-1, -2, 0, dp(10), 0, 8));
         String dnsHost = getPrivateDnsHostname();
-        addAction("Private DNS / Ad Blocking", "All apps • " + dnsHost, isPrivateDnsSetupStarted(), v -> showPrivateDnsOptions());
+        addAction("Private DNS / Ad Blocking", "All apps • " + dnsHost, isPrivateDnsSetupStarted(), v -> showEnableDnsGuide());
 
         TextView actions = text("QUICK ACTION", 11, secondary, Typeface.BOLD); actions.setLetterSpacing(.12f); root.addView(actions, lp(-1, -2, 0, dp(10), 0, 8));
         Button start = button("START FLOATING BUBBLE", primary); start.setEnabled(Settings.canDrawOverlays(this) && hasUsageAccess()); start.setOnClickListener(v -> startFloatingService()); root.addView(start, lp(-1, dp(54), 0, 0, 0, 10));
@@ -271,5 +271,5 @@ public class MainActivity extends Activity {
         showExitDnsPrompt(this::finish);
     }
     private void updateSecondaryBubbleService() { if (!Settings.canDrawOverlays(this) || !hasUsageAccess()) return; boolean enabled = BubbleSettings.isRecentAppBubbleEnabled(this) || BubbleSettings.isActivitySwitchBubbleEnabled(this); Intent intent = new Intent(this, SecondaryBubbleService.class); if (enabled) { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); } else { stopService(intent); } }
-    private void startFloatingService() { if (!Settings.canDrawOverlays(this)) { openOverlaySettings(); return; } if (!hasUsageAccess()) { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; } requestNotificationPermission(); BubbleSettings.setBubbleEnabled(this, true); Intent intent = new Intent(this, FloatingService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); updateSecondaryBubbleService(); try { Intent monitor = new Intent(this, PrivateDnsMonitorService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor); else startService(monitor); } catch (Exception ignored) {} showExitDnsPrompt(this::finishAndRemoveTask); }
+    private void startFloatingService() { if (!Settings.canDrawOverlays(this)) { openOverlaySettings(); return; } if (!hasUsageAccess()) { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; } requestNotificationPermission(); BubbleSettings.setBubbleEnabled(this, true); Intent intent = new Intent(this, FloatingService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent); updateSecondaryBubbleService(); try { Intent monitor = new Intent(this, PrivateDnsMonitorService.class); if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor); else startService(monitor); } catch (Exception ignored) {} }
 }
