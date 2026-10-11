@@ -43,7 +43,6 @@ jobs:
           gradle-version: '8.9'
 
       - name: Restore signing keystore
-        if: github.event_name != 'pull_request'
         env:
           KEYSTORE_B64: ${{ secrets.GAME_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.GAME_KEYSTORE_PASSWORD }}
@@ -98,10 +97,8 @@ jobs:
       - name: Run Android Lint
         run: gradle lint
 
-      # PRs run tests/lint only. Signed APKs are built on branch pushes,
-      # where repository signing secrets are available.
+      # Always build and publish a signed release APK for this branch/PR run.
       - name: Build signed release APK
-        if: github.event_name != 'pull_request'
         run: |
           set -e
           gradle assembleRelease
@@ -114,7 +111,6 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
 
       - name: Upload signed release APK
-        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: GameSolution-release-${{ github.sha }}
