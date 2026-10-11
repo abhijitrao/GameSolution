@@ -235,22 +235,16 @@ public class MainActivity extends Activity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor); else startService(monitor);
         } catch (Exception ignored) {}
 
-        String[] actions = {
-                "android.settings.PRIVATE_DNS_SETTINGS",
-                Settings.ACTION_WIRELESS_SETTINGS,
-                Settings.ACTION_SETTINGS
-        };
-        for (String action : actions) {
-            try {
-                // Launch directly instead of resolveActivity(): package visibility can make
-                // resolveActivity return null for system Settings screens on Android 11+.
-                startActivity(new Intent(action));
-                return;
-            } catch (Exception ignored) {
-                // Try the next Settings screen supported by this device.
-            }
+        try {
+            // Open only the Private DNS screen. Do not fall back to Wireless/Network
+            // settings because that takes users to the wrong page.
+            Intent dnsIntent = new Intent("android.settings.PRIVATE_DNS_SETTINGS");
+            startActivity(dnsIntent);
+        } catch (Exception ignored) {
+            Toast.makeText(this,
+                    "This device does not support opening Private DNS directly. Open Settings > Network > Private DNS manually.",
+                    Toast.LENGTH_LONG).show();
         }
-        Toast.makeText(this, "Could not open Settings. Please open Settings > Network manually.", Toast.LENGTH_LONG).show();
     }
     private void showExitDnsPrompt(Runnable exitAction) {
         if (!isPrivateDnsSetupStarted() || Build.VERSION.SDK_INT < 28) {
