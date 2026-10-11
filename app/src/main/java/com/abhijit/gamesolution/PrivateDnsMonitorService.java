@@ -36,6 +36,9 @@ public class PrivateDnsMonitorService extends Service {
    if(pkg!=null&&!pkg.isEmpty()&&!pkg.equals(getPackageName())){
     saveTracked(pkg);
     current=pkg;
+    // A direct tap on the bubble action must not be blocked by the auto-prompt cooldown.
+    lastPrompt=0L;
+    removePrompt();
     showPrompt(pkg,!dnsEnabled());
    }
   }
