@@ -70,6 +70,18 @@ new_recent = ''' private LinearLayout buildRecentAppsRow(){LinearLayout row=new 
 if old_recent not in s: raise SystemExit("recent apps implementation not found")
 s = s.replace(old_recent, new_recent, 1)
 
+# Add Private DNS as a main floating-bubble action, not as an item in the recent-app icon row.
+dns_action_marker = 'appInfo.setOnClickListener(v->{vibrate(20);AppDetailInfoDialog.show(this,targetPackage,windowManager,menuView,this::removeMenu);});LinearLayout recentApps=buildRecentAppsRow();'
+dns_action_replacement = '''appInfo.setOnClickListener(v->{vibrate(20);AppDetailInfoDialog.show(this,targetPackage,windowManager,menuView,this::removeMenu);});LinearLayout dns=option("◈","Private DNS / Ad Blocking","Manage DNS for "+getAppLabel(targetPackage),primary);box.addView(dns,rowLp(dp(56),dp(6)));dns.setOnClickListener(v->{vibrate(20);String p=targetPackage;removeMenu();startPrivateDnsTracking(p);});LinearLayout recentApps=buildRecentAppsRow();'''
+if dns_action_marker not in s: raise SystemExit("main bubble action insertion marker not found")
+s = s.replace(dns_action_marker, dns_action_replacement, 1)
+dns_helper = ''' private void startPrivateDnsTracking(String packageName){if(packageName==null||packageName.isEmpty()||packageName.equals(getPackageName()))return;try{Intent i=new Intent(this,PrivateDnsMonitorService.class);i.setAction("com.abhijit.gamesolution.TRACK_PRIVATE_DNS_PACKAGE");i.putExtra("package_name",packageName);if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O)startForegroundService(i);else startService(i);}catch(Exception e){Toast.makeText(this,"Unable to start Private DNS tracking",Toast.LENGTH_LONG).show();}}\\n'''
+if 'private void startPrivateDnsTracking(' not in s:
+    marker = ' private void showBubbleSettings()'
+    if marker not in s: raise SystemExit("FloatingService helper insertion marker not found")
+    s = s.replace(marker, dns_helper + marker, 1)
+
+
 # Secondary bubbles are owned by the service but rendered independently of the main bubble.
 secondary = '''\nmb = new MultiBubbleManager(this, windowManager);\nif (BubbleSettings.isRecentAppBubbleEnabled(this)) { String rp=ForegroundAppResolver.getPreviousPackage(this,getPackageName()); if(rp!=null) mb.showRecentApp(rp); }\nLiveMonitorDialog.setActivitySwitchCallback((pkg,activity)->{ if(BubbleSettings.isActivitySwitchBubbleEnabled(this) && mb!=null) mb.showActivity(pkg,activity); });\n'''
 s = s.replace('windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);', 'windowManager=(WindowManager)getSystemService(WINDOW_SERVICE);' + secondary, 1)
