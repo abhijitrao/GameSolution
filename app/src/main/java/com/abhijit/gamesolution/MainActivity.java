@@ -53,9 +53,6 @@ public class MainActivity extends Activity {
         addAction("Background operation", "Helps keep the floating utility alive", isIgnoringBatteryOptimizations(), v -> requestBatteryOptimizationExemption());
         addAction("Notifications", "Required for foreground-service status", hasNotificationPermission(), v -> requestNotificationPermission());
 
-        TextView privacy = text("PRIVACY & AD BLOCKING", 11, secondary, Typeface.BOLD); privacy.setLetterSpacing(.12f); root.addView(privacy, lp(-1, -2, 0, dp(10), 0, 8));
-        String dnsHost = getPrivateDnsHostname();
-        addAction("Private DNS / Ad Blocking", "All apps • " + dnsHost, isPrivateDnsSetupStarted(), v -> showEnableDnsGuide());
         addAction("TEST: Private DNS navigation", "Temporary test menu — remove after testing", false, v -> showPrivateDnsIntentTest());
 
         TextView actions = text("QUICK ACTION", 11, secondary, Typeface.BOLD); actions.setLetterSpacing(.12f); root.addView(actions, lp(-1, -2, 0, dp(10), 0, 8));
