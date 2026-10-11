@@ -236,26 +236,14 @@ public class MainActivity extends Activity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(monitor); else startService(monitor);
         } catch (Exception ignored) {}
 
-        // Try direct Private DNS navigation first. Some Android builds expose this
-        // screen only through the Network dashboard fragment.
-        Intent[] intents = new Intent[] {
-                new Intent("android.settings.PRIVATE_DNS_SETTINGS"),
-                new Intent(Settings.ACTION_SETTINGS)
-                        .putExtra(":settings:show_fragment", "com.android.settings.network.PrivateDnsSettings")
-                        .putExtra(":settings:show_fragment_title", "Private DNS")
-        };
-        for (Intent intent : intents) {
-            try {
-                startActivity(intent);
-                return;
-            } catch (Exception ignored) {
-                // Try the next supported route.
-            }
+        // Direct Private DNS navigation is unavailable on this device; open Wireless settings.
+        try {
+            startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open Wireless settings.", Toast.LENGTH_LONG).show();
         }
-        Toast.makeText(this,
-                "Private DNS screen could not be opened automatically on this device. Open Settings > Network > Private DNS manually.",
-                Toast.LENGTH_LONG).show();
     }
+
     // TEMPORARY: test different Settings routes, then remove this action and method.
     private void showPrivateDnsIntentTest() {
         final String[] labels = {
