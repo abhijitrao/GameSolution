@@ -15,7 +15,6 @@ import android.provider.Settings;
 import android.view.WindowManager;
 import android.view.Gravity;
 import android.view.View;
-import android.view.PixelCopy;
 import android.graphics.PixelFormat;
 import android.graphics.Color;
 import android.widget.LinearLayout;
